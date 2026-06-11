@@ -33,6 +33,9 @@ import android.content.Context
 import android.location.LocationListener
 import android.location.LocationManager
 import android.util.Log
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import org.osmdroid.views.overlay.Marker
 
 
@@ -87,17 +90,30 @@ fun ParisMap(modifier: Modifier = Modifier) {
         mutableStateOf<GeoPoint?>(null)
     }
 
+    // Connexion au DataStore et abonnement au Flow des cellules visitées
+    val store = remember { VisitedCellsStore(context) }
+    val scope = rememberCoroutineScope()
+    val visitedCells by store.visitedCells.collectAsState(initial = emptySet())
+
     // Service Android qui fournit la localisation.
     val locationManager = remember {
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     }
 
+    // Pas besoin d'écrire si la cellule n'a pas changé
+    var lastCell by remember { mutableStateOf<CellId?>(null) }
     // Callback appelé par Android à chaque mise à jour de position.
     val locationListener = remember {
         LocationListener { location ->
             currentLocation = GeoPoint(location.latitude, location.longitude)
+            val cell = latLonToCell(location.latitude, location.longitude)
+            if (cell != lastCell) {
+                scope.launch { store.addCell(cell) }
+                lastCell = cell
+            }
         }
     }
+
 
     // Abonnement aux mises à jour de localisation seulement si on a la permission
     DisposableEffect(hasLocationPermission) {
@@ -119,12 +135,14 @@ fun ParisMap(modifier: Modifier = Modifier) {
     }
 
     // On crée la MapView une seule fois et on la mémorise au fil des recompositions
+    val fogOverlay = remember { FogOverlay(visitedCells) }
     val mapView = remember {
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(13.0)
             controller.setCenter(GeoPoint(48.8566, 2.3522)) // Paris
+            overlays.add(fogOverlay)   // fog ajouté une fois, en dessous du reste
         }
     }
 
@@ -145,14 +163,13 @@ fun ParisMap(modifier: Modifier = Modifier) {
         }
     }
 
-
-
     AndroidView(
         factory = { mapView },
-        // Re-exécuté à chaque changement de state lu ici (currentLocation).
-        // On efface les overlays, puis on (ré)ajoute un marqueur si position connue.
+        // Re-exécuté à chaque changement de state lu ici (currentLocation ou visitedCell).
+        // On met à jour le fog, on recycle le marqueur (sans toucher au fog), on redessine.
         update = { view ->
-            view.overlays.clear()
+            fogOverlay.updateCells(visitedCells)
+            view.overlays.removeAll { it is Marker }
             // Le ?.let donne un non-null garanti qu'on assigne à location
             currentLocation?.let { location ->
                 val myPositionMarker = Marker(view).apply {
@@ -166,4 +183,5 @@ fun ParisMap(modifier: Modifier = Modifier) {
         },
         modifier = modifier
     )
+
 }
