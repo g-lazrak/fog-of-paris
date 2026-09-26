@@ -78,12 +78,18 @@ Personal project, not published on the Play Store for now.
    - Add a clear on/off switch for tracking in the UI.
    - **Battery matters**: use balanced intervals, pause or slow down updates
      when the user is not walking (activity recognition helps here).
-4. **Gamification (later phase).** Points per neighborhood.
-   - Default neighborhood unit: Paris's **80 "quartiers administratifs"**
-     (4 per arrondissement), boundaries from Paris OpenData (GeoJSON, bundled).
-   - Ideas: % of each quartier revealed, points/badges when a quartier reaches
-     thresholds (e.g. 25/50/100%), global % of Paris revealed, history over time.
-   - Propose the exact scoring rules to the owner before implementing.
+4. **Gamification (Phase 7, rules approved by the owner 2026-09-26).**
+   - Unit: Paris's **80 "quartiers administratifs"** (Paris OpenData
+     `quartier_paris`, bundled GeoJSON).
+   - Quartier % = revealed cells whose centre is in the quartier / all cells
+     of the quartier (same method as the Paris-wide %).
+   - Medals: Bronze 10 %, Silver 25 %, Gold 50 %, Maîtrisé 75 %. Not 100 %:
+     building interiors can't be walked, so 100 % is practically unreachable.
+   - Points = 1 per revealed cell in Paris + 100 per medal (cumulative: a
+     Gold quartier gives 3 medals = 300).
+   - History is derived from `firstVisitedAt` (cells per week, medal dates);
+     nothing extra stored.
+   - Quiet notification (no sound) when a medal is won while tracking.
 
 ---
 
