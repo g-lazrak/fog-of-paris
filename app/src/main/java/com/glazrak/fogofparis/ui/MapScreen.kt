@@ -61,6 +61,7 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
 
     val visitedCells by viewModel.visitedCells.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
+    val parisBoundary by viewModel.parisBoundary.collectAsStateWithLifecycle()
 
     val mapView = rememberMapViewWithLifecycle()
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -73,7 +74,7 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                 .zoom(INITIAL_ZOOM)
                 .build()
             loadedMap.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { loadedStyle ->
-                addFogAndPositionLayers(loadedStyle)
+                addGameLayers(loadedStyle)
                 style = loadedStyle
             }
             map = loadedMap
@@ -82,6 +83,10 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
 
     LaunchedEffect(style, visitedCells) {
         style?.let { updateFog(it, visitedCells) }
+    }
+    LaunchedEffect(style, parisBoundary) {
+        val boundary = parisBoundary ?: return@LaunchedEffect
+        style?.let { updateOutside(it, boundary) }
     }
     LaunchedEffect(style, currentPosition) {
         style?.let { updatePosition(it, currentPosition) }

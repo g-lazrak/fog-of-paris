@@ -1,14 +1,20 @@
 package com.glazrak.fogofparis.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.glazrak.fogofparis.data.VisitedCellsStore
+import com.glazrak.fogofparis.data.loadParisBoundary
 import com.glazrak.fogofparis.domain.CellId
+import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.latLonToCell
 import com.glazrak.fogofparis.tracking.locationUpdates
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,15 +34,32 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentPosition = MutableStateFlow<GeoPosition?>(null)
     val currentPosition: StateFlow<GeoPosition?> = _currentPosition.asStateFlow()
 
+    // null tant que le fichier des arrondissements n'est pas lu (quelques ms).
+    private val _parisBoundary = MutableStateFlow<CityBoundary?>(null)
+    val parisBoundary: StateFlow<CityBoundary?> = _parisBoundary.asStateFlow()
+
+    init {
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                _parisBoundary.value = loadParisBoundary(application)
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "Failed to load Paris boundary", e)
+            }
+        }
+    }
+
     private var trackingJob: Job? = null
 
     // À appeler une fois la permission de localisation accordée.
     fun startTracking() {
         if (trackingJob != null) return
         trackingJob = viewModelScope.launch {
+            val paris = parisBoundary.filterNotNull().first()
             var lastCell: CellId? = null
             locationUpdates(getApplication()).collect { position ->
                 _currentPosition.value = position
+                // Hors de Paris : on affiche la position mais on ne révèle rien.
+                if (!paris.contains(position)) return@collect
                 val cell = latLonToCell(position.lat, position.lon)
                 // Évite une écriture disque tant qu'on reste dans la même cellule.
                 if (cell != lastCell) {
