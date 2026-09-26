@@ -1,13 +1,23 @@
 package com.glazrak.fogofparis.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.view.Gravity
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -15,7 +25,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import com.glazrak.fogofparis.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -40,22 +54,26 @@ private const val INITIAL_ZOOM = 12.0
 @Composable
 fun MapScreen(viewModel: MapViewModel = viewModel()) {
     val context = LocalContext.current
+    val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
 
-    var hasLocationPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_GRANTED
-        )
-    }
+    // Android affiche les demandes l'une après l'autre (position, puis notifications).
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted -> hasLocationPermission = isGranted }
-
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission) {
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        // Sans position précise, rien ne serait révélé (précision de plusieurs km).
+        // Sans notifications, le suivi marche quand même, la notification est juste masquée.
+        if (isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION)) {
             viewModel.startTracking()
         } else {
-            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            Toast.makeText(context, R.string.precise_location_needed, Toast.LENGTH_LONG).show()
+        }
+    }
+    val onToggleTracking = {
+        if (isTracking) {
+            viewModel.stopTracking()
+        } else {
+            val missing = requiredPermissions().filterNot { isGranted(context, it) }
+            if (missing.isEmpty()) viewModel.startTracking() else permissionLauncher.launch(missing.toTypedArray())
         }
     }
 
@@ -108,8 +126,45 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
         map?.let { applyOrnamentMargins(it, insetsPx, basePx) }
     }
 
-    AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+        TrackingButton(
+            isTracking = isTracking,
+            onClick = onToggleTracking,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(bottom = 24.dp),
+        )
+    }
 }
+
+@Composable
+private fun TrackingButton(isTracking: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        icon = {
+            Icon(
+                painter = painterResource(R.drawable.ic_notification_walk),
+                contentDescription = null,
+            )
+        },
+        text = { Text(stringResource(if (isTracking) R.string.tracking_stop else R.string.tracking_start)) },
+        containerColor = if (isTracking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        contentColor = if (isTracking) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        modifier = modifier,
+    )
+}
+
+// Notifications : permission à demander seulement depuis Android 13.
+private fun requiredPermissions(): List<String> = buildList {
+    add(Manifest.permission.ACCESS_FINE_LOCATION)
+    add(Manifest.permission.ACCESS_COARSE_LOCATION)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
+}
+
+private fun isGranted(context: Context, permission: String): Boolean =
+    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
 private val ORNAMENT_MARGIN = 8.dp
 

@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">FogOfParis</string>
+    <string name="tracking_channel_name">Walk tracking</string>
+    <string name="tracking_notification_title">Revealing Paris</string>
+    <string name="tracking_notification_text">Walk tracking is on. Location stays on your phone.</string>
+    <string name="tracking_notification_stop">Stop</string>
+    <string name="tracking_start">Start tracking</string>
+    <string name="tracking_stop">Stop tracking</string>
+    <string name="precise_location_needed">Precise location is needed to reveal 50 m squares.</string>
 </resources>

@@ -70,8 +70,11 @@ Personal project, not published on the Play Store for now.
 3. **Works in the background, app closed.** The phone stays in the pocket.
    - Implement a **foreground service** (persistent notification) for tracking.
    - Android 14+ requirements: declare `foregroundServiceType="location"` and
-     the `FOREGROUND_SERVICE_LOCATION` permission; request
-     `ACCESS_BACKGROUND_LOCATION` separately, after foreground location.
+     the `FOREGROUND_SERVICE_LOCATION` permission.
+   - **No `ACCESS_BACKGROUND_LOCATION`** (owner's decision, 2026-09-26, for
+     privacy): the service is always started from the visible app, so it keeps
+     "while in use" location access with the app closed. Consequence: tracking
+     can't auto-restart after a reboot; the user taps the switch again.
    - Add a clear on/off switch for tracking in the UI.
    - **Battery matters**: use balanced intervals, pause or slow down updates
      when the user is not walking (activity recognition helps here).

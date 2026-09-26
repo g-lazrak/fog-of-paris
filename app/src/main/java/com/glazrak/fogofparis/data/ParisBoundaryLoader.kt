@@ -4,6 +4,10 @@ import android.content.Context
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.Ring
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.MultiPolygon
 import org.maplibre.geojson.Polygon
@@ -12,7 +16,18 @@ import org.maplibre.geojson.Polygon
 // La commune (bois de Boulogne et de Vincennes compris) = leur réunion.
 const val ARRONDISSEMENTS_ASSET = "arrondissements.geojson"
 
-fun loadParisBoundary(context: Context): CityBoundary {
+// Lu une seule fois par processus, puis partagé entre l'écran et le service de suivi.
+object ParisBoundaryCache {
+    private val mutex = Mutex()
+    private var boundary: CityBoundary? = null
+
+    suspend fun get(context: Context): CityBoundary = mutex.withLock {
+        boundary ?: withContext(Dispatchers.Default) { loadParisBoundary(context) }
+            .also { boundary = it }
+    }
+}
+
+private fun loadParisBoundary(context: Context): CityBoundary {
     val json = context.assets.open(ARRONDISSEMENTS_ASSET).bufferedReader().use { it.readText() }
     return parisBoundaryFromGeoJson(json)
 }
