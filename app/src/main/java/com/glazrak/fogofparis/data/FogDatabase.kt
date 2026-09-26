@@ -28,8 +28,9 @@ interface VisitedCellDao {
     fun observeAll(): Flow<List<VisitedCellEntity>>
 
     // IGNORE : si la cellule existe déjà, on garde la date de première visite.
+    // Renvoie, pour chaque cellule, son numéro de ligne, ou -1 si elle existait déjà.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertIfAbsent(cells: List<VisitedCellEntity>)
+    suspend fun insertIfAbsent(cells: List<VisitedCellEntity>): List<Long>
 }
 
 @Database(entities = [VisitedCellEntity::class], version = 1)

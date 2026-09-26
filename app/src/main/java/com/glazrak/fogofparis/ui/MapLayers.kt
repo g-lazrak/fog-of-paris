@@ -6,6 +6,7 @@ import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CellRect
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.GeoPosition
+import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.cellToBounds
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngQuad
@@ -14,6 +15,7 @@ import org.maplibre.android.style.expressions.Expression.coalesce
 import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
@@ -21,6 +23,9 @@ import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
 import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
+import org.maplibre.android.style.layers.PropertyFactory.lineColor
+import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
+import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.layers.PropertyFactory.rasterFadeDuration
 import org.maplibre.android.style.layers.PropertyFactory.rasterResampling
 import org.maplibre.android.style.layers.PropertyFactory.textField
@@ -28,6 +33,7 @@ import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.android.style.sources.ImageSource
+import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
@@ -36,6 +42,8 @@ const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
 private const val FOG_SOURCE_ID = "fog-source"
 private const val FOG_LAYER_ID = "fog-layer"
+private const val QUARTIERS_SOURCE_ID = "quartiers-source"
+private const val QUARTIERS_LAYER_ID = "quartiers-layer"
 private const val OUTSIDE_SOURCE_ID = "outside-source"
 private const val OUTSIDE_LAYER_ID = "outside-layer"
 private const val POSITION_SOURCE_ID = "position-source"
@@ -56,9 +64,18 @@ private val WORLD_RING = listOf(
 class FogImage(val bitmap: Bitmap, val extent: CellRect)
 
 // Ajoutés après le style de base, donc dessinés par-dessus, dans cet ordre :
-// brouillard (ajouté plus tard, voir updateFog), noir hors de Paris (masque
-// aussi les bords des cellules qui débordent de la limite), puis la position.
+// brouillard (ajouté plus tard, voir updateFog), contours des quartiers, noir
+// hors de Paris (masque aussi les bords des cellules qui débordent de la
+// limite), puis la position.
 fun addGameLayers(style: Style) {
+    style.addSource(GeoJsonSource(QUARTIERS_SOURCE_ID))
+    style.addLayer(
+        LineLayer(QUARTIERS_LAYER_ID, QUARTIERS_SOURCE_ID).withProperties(
+            lineColor(Color.WHITE),
+            lineOpacity(0.25f),
+            lineWidth(1f),
+        )
+    )
     style.addSource(GeoJsonSource(OUTSIDE_SOURCE_ID))
     style.addLayer(
         FillLayer(OUTSIDE_LAYER_ID, OUTSIDE_SOURCE_ID).withProperties(
@@ -101,8 +118,19 @@ fun updateFog(style: Style, fog: FogImage) {
             // Pas de fondu à chaque mise à jour de l'image.
             rasterFadeDuration(0f),
         ),
-        OUTSIDE_LAYER_ID,
+        QUARTIERS_LAYER_ID,
     )
+}
+
+// Contours fins des 80 quartiers, pour se repérer dans le jeu.
+fun updateQuartierOutlines(style: Style, quartiers: List<Quartier>) {
+    val polygons = quartiers.map { quartier ->
+        Polygon.fromLngLats(
+            quartier.boundary.rings.map { ring -> ring.points.map { Point.fromLngLat(it.lon, it.lat) } }
+        )
+    }
+    style.getSourceAs<GeoJsonSource>(QUARTIERS_SOURCE_ID)
+        ?.setGeoJson(FeatureCollection.fromFeatures(polygons.map { Feature.fromGeometry(it) }))
 }
 
 // Tout le monde en noir, sauf un trou en forme de Paris.

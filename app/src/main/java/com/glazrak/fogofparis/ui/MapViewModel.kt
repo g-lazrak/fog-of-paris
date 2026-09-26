@@ -8,16 +8,23 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.glazrak.fogofparis.data.ParisBoundaryCache
+import com.glazrak.fogofparis.data.ParisGeo
+import com.glazrak.fogofparis.data.ParisGeoCache
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
 import com.glazrak.fogofparis.domain.FOG_PIXELS_PER_CELL
 import com.glazrak.fogofparis.domain.GeoPosition
+import com.glazrak.fogofparis.domain.Quartier
+import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.TrackingStatus
+import com.glazrak.fogofparis.domain.VisitedCell
+import com.glazrak.fogofparis.domain.WeekCount
 import com.glazrak.fogofparis.domain.fogAlphaMask
+import com.glazrak.fogofparis.domain.totalPoints
 import com.glazrak.fogofparis.domain.trackingStatus
+import com.glazrak.fogofparis.domain.weeklyHistory
 import com.glazrak.fogofparis.tracking.TrackingService
 import com.glazrak.fogofparis.tracking.TrackingState
 import com.glazrak.fogofparis.tracking.lastKnownPosition
@@ -30,26 +37,48 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.ZoneId
 
-// Part de Paris révélée : cellules révélées dans Paris / cellules de Paris.
-data class Progress(val revealedCells: Int, val totalCells: Int) {
+// Résumé affiché en haut de la carte et de l'écran des quartiers.
+data class GameSummary(
+    val revealedCells: Int,
+    val totalCells: Int,
+    val points: Int,
+) {
     val percent: Double get() = if (totalCells == 0) 0.0 else revealedCells * 100.0 / totalCells
 }
 
-// Demande de déplacer la carte. Le numéro permet de redemander la même position.
-data class CameraTarget(val position: GeoPosition, val requestId: Int)
+// Où déplacer la carte. Le numéro permet de redemander la même chose.
+sealed interface CameraMove {
+    val requestId: Int
 
-// Prépare les données de l'écran carte. Survit aux rotations d'écran,
-// contrairement au composable. Le GPS lui-même est géré par TrackingService.
+    data class ToPosition(val position: GeoPosition, override val requestId: Int) : CameraMove
+    data class ToArea(val boundary: CityBoundary, override val requestId: Int) : CameraMove
+}
+
+// Données des deux écrans (carte et quartiers). Survit aux rotations d'écran,
+// contrairement aux composables. Le GPS lui-même est géré par TrackingService.
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = VisitedCellsRepository.create(application)
 
-    private val visitedCells: StateFlow<Set<CellId>> = repository.visitedCells
+    private val visits: StateFlow<List<VisitedCell>> = repository.visits
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val visitedCells: StateFlow<Set<CellId>> = visits
+        .map { list -> list.mapTo(HashSet(list.size)) { it.cell } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    // null tant que les fichiers de Paris ne sont pas lus (moins d'une seconde).
+    private val geo = MutableStateFlow<ParisGeo?>(null)
+    val parisBoundary: StateFlow<CityBoundary?> = geo
+        .map { it?.boundary }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val isTracking: StateFlow<Boolean> = TrackingState.isTracking
 
@@ -70,25 +99,39 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         if (tracking) trackingStatus(movement, precise) else null
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    // null tant que le fichier des arrondissements n'est pas lu (quelques ms).
-    private val _parisBoundary = MutableStateFlow<CityBoundary?>(null)
-    val parisBoundary: StateFlow<CityBoundary?> = _parisBoundary.asStateFlow()
+    val quartierProgress: StateFlow<List<QuartierProgress>> =
+        combine(visits, geo.filterNotNull()) { list, parisGeo -> parisGeo.quartiers.progress(list) }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val cityCells = MutableStateFlow<CityCells?>(null)
+    val summary: StateFlow<GameSummary?> =
+        combine(visitedCells, geo.filterNotNull(), quartierProgress) { cells, parisGeo, progress ->
+            val revealed = parisGeo.cells.countInside(cells)
+            GameSummary(
+                revealedCells = revealed,
+                totalCells = parisGeo.cells.totalCells,
+                points = totalPoints(revealed, progress),
+            )
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val progress: StateFlow<Progress?> = combine(visitedCells, cityCells.filterNotNull()) { cells, city ->
-        Progress(revealedCells = city.countInside(cells), totalCells = city.totalCells)
-    }.flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val weeklyHistory: StateFlow<List<WeekCount>> = visits
+        .map { list -> weeklyHistory(list.map { it.firstVisitedAt }, LocalDate.now(), ZoneId.systemDefault()) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Recalculée à chaque nouvelle cellule (une petite image, quelques ms).
-    val fogImage: StateFlow<FogImage?> = combine(visitedCells, cityCells.filterNotNull()) { cells, city ->
-        buildFogImage(cells, city)
+    val fogImage: StateFlow<FogImage?> = combine(visitedCells, geo.filterNotNull()) { cells, parisGeo ->
+        buildFogImage(cells, parisGeo.cells)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private val _cameraTarget = MutableStateFlow<CameraTarget?>(null)
-    val cameraTarget: StateFlow<CameraTarget?> = _cameraTarget.asStateFlow()
+    val quartierOutlines: StateFlow<List<Quartier>> = geo
+        .map { it?.quartiers?.quartiers.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _cameraMove = MutableStateFlow<CameraMove?>(null)
+    val cameraMove: StateFlow<CameraMove?> = _cameraMove.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -100,11 +143,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             try {
-                val boundary = ParisBoundaryCache.get(application)
-                _parisBoundary.value = boundary
-                cityCells.value = withContext(Dispatchers.Default) { CityCells.of(boundary) }
+                geo.value = ParisGeoCache.get(application)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load Paris boundary", e)
+                Log.e(TAG, "Failed to load Paris geography", e)
             }
         }
         viewModelScope.launch { centerOnUserIfInParis() }
@@ -116,7 +157,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         if (!hasLocationPermission()) return
         val position = lastKnownPosition(getApplication()) ?: return
         val paris = parisBoundary.filterNotNull().first()
-        if (paris.contains(position)) moveCameraTo(position)
+        if (paris.contains(position)) {
+            _cameraMove.value = CameraMove.ToPosition(position, nextRequestId())
+        }
     }
 
     // Bouton "me recentrer". La permission est vérifiée par l'écran.
@@ -128,14 +171,15 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             if (!TrackingState.isTracking.value) oneShotPosition.value = position
-            moveCameraTo(position)
+            _cameraMove.value = CameraMove.ToPosition(position, nextRequestId())
         }
     }
 
-    private fun moveCameraTo(position: GeoPosition) {
-        val nextId = (_cameraTarget.value?.requestId ?: 0) + 1
-        _cameraTarget.value = CameraTarget(position, nextId)
+    fun showQuartier(quartier: Quartier) {
+        _cameraMove.value = CameraMove.ToArea(quartier.boundary, nextRequestId())
     }
+
+    private fun nextRequestId(): Int = (_cameraMove.value?.requestId ?: 0) + 1
 
     private fun hasLocationPermission(): Boolean = ContextCompat.checkSelfPermission(
         getApplication(), Manifest.permission.ACCESS_FINE_LOCATION,

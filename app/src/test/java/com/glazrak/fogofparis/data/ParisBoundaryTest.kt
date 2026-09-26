@@ -2,6 +2,8 @@ package com.glazrak.fogofparis.data
 
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
+import com.glazrak.fogofparis.domain.Quartier
+import com.glazrak.fogofparis.domain.QuartierIndex
 import com.glazrak.fogofparis.domain.latLonToCell
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.areaInSquareMeters
@@ -17,11 +19,13 @@ class ParisBoundaryTest {
 
     companion object {
         private lateinit var paris: CityBoundary
+        private lateinit var quartiers: List<Quartier>
 
         @BeforeClass
         @JvmStatic
         fun loadBoundary() {
             paris = parisBoundaryFromGeoJson(File("src/main/assets/$ARRONDISSEMENTS_ASSET").readText())
+            quartiers = quartiersFromGeoJson(File("src/main/assets/$QUARTIERS_ASSET").readText())
         }
     }
 
@@ -34,6 +38,32 @@ class ParisBoundaryTest {
     fun outline_area_matches_official_paris_area() {
         // Superficie officielle de la commune : ~105,4 km².
         assertEquals(105.4, areaInSquareMeters(paris.rings.single()) / 1_000_000, 1.0)
+    }
+
+    @Test
+    fun there_are_80_quartiers_4_per_arrondissement() {
+        assertEquals(80, quartiers.size)
+        assertEquals((1..20).toSet(), quartiers.map { it.arrondissement }.toSet())
+        assertTrue(quartiers.groupBy { it.arrondissement }.values.all { it.size == 4 })
+    }
+
+    @Test
+    fun quartiers_cover_paris_cells_almost_exactly() {
+        val parisCells = CityCells.of(paris)
+        val index = QuartierIndex(quartiers)
+        val sumOfQuartiers = quartiers.sumOf { it.cells.totalCells }
+        // Deux sources différentes (arrondissements / quartiers) : on tolère 0,5 %.
+        assertEquals(parisCells.totalCells.toDouble(), sumOfQuartiers.toDouble(), parisCells.totalCells * 0.005)
+        val orphans = parisCells.allCells().count { index.quartierOf(it) == null }
+        assertTrue("$orphans Paris cells without quartier", orphans < parisCells.totalCells * 0.005)
+    }
+
+    @Test
+    fun landmarks_fall_in_their_quartier() {
+        val index = QuartierIndex(quartiers)
+        assertEquals("Gros-Caillou", index.quartierOf(latLonToCell(48.8584, 2.2945))?.name) // Tour Eiffel
+        assertEquals("Notre-Dame", index.quartierOf(latLonToCell(48.8530, 2.3499))?.name)
+        assertEquals("Bel-Air", index.quartierOf(latLonToCell(48.8330, 2.4180))?.name) // Lac Daumesnil
     }
 
     @Test

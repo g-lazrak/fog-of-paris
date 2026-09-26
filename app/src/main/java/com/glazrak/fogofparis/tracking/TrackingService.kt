@@ -18,7 +18,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.glazrak.fogofparis.MainActivity
 import com.glazrak.fogofparis.R
-import com.glazrak.fogofparis.data.ParisBoundaryCache
+import com.glazrak.fogofparis.data.ParisGeoCache
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.GeoPosition
@@ -39,6 +39,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 // Service "de premier plan" : Android le laisse tourner écran éteint et app
 // fermée tant qu'une notification permanente est affichée. C'est lui qui
@@ -48,6 +50,8 @@ class TrackingService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val locationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val repository by lazy { VisitedCellsRepository.create(this) }
+    private val medalNotifier by lazy { MedalNotifier(this, repository) }
+    private val processingMutex = Mutex()
 
     private var previousFix: LocationFix? = null
     private var lastRecordedCell: CellId? = null
@@ -139,21 +143,28 @@ class TrackingService : Service() {
         val previous = previousFix
         previousFix = fix
         scope.launch {
-            val paris = ParisBoundaryCache.get(applicationContext)
-            val rejection = rejectionReason(fix, previous, paris, movement)
-            if (rejection != null) {
-                Log.d(TAG, "Fix ignored: $rejection")
-                return@launch
-            }
-            val cell = latLonToCell(fix.position.lat, fix.position.lon)
-            // Évite une écriture en base tant qu'on reste dans la même cellule.
-            if (cell == lastRecordedCell) return@launch
-            lastRecordedCell = cell
-            try {
-                repository.recordVisit(cell, timeMillis = fix.timeMillis)
-            } catch (e: Exception) {
-                Log.e(TAG, "Could not save visited cell $cell", e)
-            }
+            // Une position à la fois, dans l'ordre : les comptes des médailles restent justes.
+            processingMutex.withLock { processFix(fix, previous, movement) }
+        }
+    }
+
+    private suspend fun processFix(fix: LocationFix, previous: LocationFix?, movement: Movement) {
+        val geo = ParisGeoCache.get(applicationContext)
+        val rejection = rejectionReason(fix, previous, geo.boundary, movement)
+        if (rejection != null) {
+            Log.d(TAG, "Fix ignored: $rejection")
+            return
+        }
+        val cell = latLonToCell(fix.position.lat, fix.position.lon)
+        // Évite une écriture en base tant qu'on reste dans la même cellule.
+        if (cell == lastRecordedCell) return
+        lastRecordedCell = cell
+        try {
+            medalNotifier.ensureLoaded(geo)
+            val isNew = repository.recordVisit(cell, timeMillis = fix.timeMillis)
+            if (isNew) medalNotifier.onNewCell(cell, geo)
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not save visited cell $cell", e)
         }
     }
 

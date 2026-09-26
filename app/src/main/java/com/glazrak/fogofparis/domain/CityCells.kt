@@ -25,6 +25,10 @@ class CityCells private constructor(
 
     fun countInside(cells: Set<CellId>): Int = cells.count { contains(it) }
 
+    fun allCells(): Sequence<CellId> = rows.asSequence().flatMap { (y, spans) ->
+        spans.asSequence().flatMap { span -> (span.xStart..span.xEnd).asSequence().map { CellId(it, y) } }
+    }
+
     companion object {
         // Balayage ligne par ligne : pour chaque rangée de cellules, on cherche où
         // l'horizontale passant par le centre des cellules croise le contour.

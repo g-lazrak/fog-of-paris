@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.view.Gravity
 import android.widget.Toast
-import java.util.Locale
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -54,11 +53,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -68,7 +67,7 @@ private const val INITIAL_ZOOM = 12.0
 private const val RECENTER_ZOOM = 15.5
 
 @Composable
-fun MapScreen(viewModel: MapViewModel = viewModel()) {
+fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
     val context = LocalContext.current
     val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
     val trackingStatus by viewModel.trackingStatus.collectAsStateWithLifecycle()
@@ -117,8 +116,9 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
     }
 
     val fogImage by viewModel.fogImage.collectAsStateWithLifecycle()
-    val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val cameraTarget by viewModel.cameraTarget.collectAsStateWithLifecycle()
+    val summary by viewModel.summary.collectAsStateWithLifecycle()
+    val quartierOutlines by viewModel.quartierOutlines.collectAsStateWithLifecycle()
+    val cameraMove by viewModel.cameraMove.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
     val parisBoundary by viewModel.parisBoundary.collectAsStateWithLifecycle()
 
@@ -145,14 +145,30 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
         val fog = fogImage ?: return@LaunchedEffect
         style?.let { updateFog(it, fog) }
     }
-    LaunchedEffect(map, cameraTarget) {
-        val target = cameraTarget ?: return@LaunchedEffect
-        map?.animateCamera(
-            CameraUpdateFactory.newLatLngZoom(
-                LatLng(target.position.lat, target.position.lon),
+    // Marges autour d'un quartier affiché : étroites sur les côtés, plus
+    // grandes en haut et en bas pour laisser la place au bandeau et aux boutons.
+    val sidePaddingPx = with(LocalDensity.current) { 24.dp.roundToPx() }
+    val verticalPaddingPx = with(LocalDensity.current) { 140.dp.roundToPx() }
+    LaunchedEffect(map, cameraMove) {
+        val move = cameraMove ?: return@LaunchedEffect
+        val update = when (move) {
+            is CameraMove.ToPosition -> CameraUpdateFactory.newLatLngZoom(
+                LatLng(move.position.lat, move.position.lon),
                 RECENTER_ZOOM,
             )
-        )
+            is CameraMove.ToArea -> {
+                val bounds = LatLngBounds.Builder()
+                move.boundary.rings.flatMap { it.points }.forEach { bounds.include(LatLng(it.lat, it.lon)) }
+                // Marges positionnelles (API Java) : left, top, right, bottom.
+                CameraUpdateFactory.newLatLngBounds(
+                    bounds.build(), sidePaddingPx, verticalPaddingPx, sidePaddingPx, verticalPaddingPx,
+                )
+            }
+        }
+        map?.animateCamera(update)
+    }
+    LaunchedEffect(style, quartierOutlines) {
+        style?.let { updateQuartierOutlines(it, quartierOutlines) }
     }
     LaunchedEffect(style, parisBoundary) {
         val boundary = parisBoundary ?: return@LaunchedEffect
@@ -180,9 +196,10 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        progress?.let {
-            ProgressLabel(
-                progress = it,
+        summary?.let {
+            SummaryBanner(
+                summary = it,
+                onClick = onOpenQuartiers,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -218,22 +235,35 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
     }
 }
 
+// Bandeau du haut ; un appui ouvre l'écran des quartiers.
 @Composable
-private fun ProgressLabel(progress: Progress, modifier: Modifier = Modifier) {
-    // Une cellule = 0,002 % de Paris : on garde 2 décimales tant qu'on est sous 10 %.
-    val decimals = if (progress.percent < 10) 2 else 1
-    val percent = String.format(Locale.FRANCE, "%.${decimals}f", progress.percent)
+private fun SummaryBanner(summary: GameSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier,
     ) {
-        Text(
-            text = stringResource(R.string.progress_label, percent),
-            style = MaterialTheme.typography.labelLarge,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-        )
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.progress_label,
+                    formatPercent(summary.percent),
+                    formatPoints(summary.points),
+                ),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_trophy),
+                contentDescription = stringResource(R.string.open_quartiers),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 

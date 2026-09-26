@@ -1,0 +1,201 @@
+package com.glazrak.fogofparis.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.domain.Medal
+import com.glazrak.fogofparis.domain.Quartier
+import com.glazrak.fogofparis.domain.QuartierProgress
+import com.glazrak.fogofparis.domain.WeekCount
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.FRANCE)
+
+// Écran "Quartiers" : score, historique, et progression des 80 quartiers
+// rangés par arrondissement. Un appui sur un quartier le montre sur la carte.
+@Composable
+fun QuartiersScreen(
+    viewModel: MapViewModel,
+    onBack: () -> Unit,
+    onQuartierSelected: (Quartier) -> Unit,
+) {
+    val summary by viewModel.summary.collectAsStateWithLifecycle()
+    val progress by viewModel.quartierProgress.collectAsStateWithLifecycle()
+    val history by viewModel.weeklyHistory.collectAsStateWithLifecycle()
+    val byArrondissement = progress.groupBy { it.quartier.arrondissement }.toSortedMap()
+
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(4.dp)) {
+                IconButton(onClick = onBack) {
+                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                }
+                Text(stringResource(R.string.quartiers_title), style = MaterialTheme.typography.titleLarge)
+            }
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item {
+                    summary?.let { SummaryCard(it, progress) }
+                    HistoryChart(history)
+                }
+                byArrondissement.forEach { (arrondissement, quartiers) ->
+                    item(key = "header-$arrondissement") { ArrondissementHeader(arrondissement) }
+                    items(quartiers, key = { it.quartier.id }) { quartierProgress ->
+                        QuartierRow(quartierProgress, onClick = { onQuartierSelected(quartierProgress.quartier) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(summary: GameSummary, progress: List<QuartierProgress>) {
+    // Nombre de quartiers ayant atteint au moins chaque médaille.
+    val medalCounts = Medal.entries.associateWith { medal -> progress.count { medal in it.medalDates } }
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(
+            stringResource(R.string.summary_percent, formatPercent(summary.percent)),
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Text(
+            stringResource(R.string.summary_points, formatPoints(summary.points)),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Medal.entries.forEach { medal ->
+                Text("${medal.emoji} ${medalCounts[medal]}", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+// Petites barres : cellules révélées chacune des 8 dernières semaines.
+@Composable
+private fun HistoryChart(history: List<WeekCount>) {
+    if (history.isEmpty()) return
+    val max = history.maxOf { it.revealedCells }.coerceAtLeast(1)
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text(stringResource(R.string.history_title), style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxWidth().height(96.dp),
+        ) {
+            history.forEach { week ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                ) {
+                    Text("${week.revealedCells}", style = MaterialTheme.typography.labelSmall)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Hauteur minimale pour qu'une semaine vide reste visible.
+                            .height((56 * week.revealedCells / max).coerceAtLeast(2).dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)),
+                    )
+                    Text(week.weekStart.format(DAY_MONTH), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArrondissementHeader(arrondissement: Int) {
+    Column {
+        HorizontalDivider()
+        Text(
+            arrondissementLabel(LocalContext.current, arrondissement),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun QuartierRow(progress: QuartierProgress, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val medal = progress.medal
+    val nextMedal = Medal.entries.firstOrNull { it !in progress.medalDates }
+    val detail = when {
+        nextMedal != null -> stringResource(R.string.quartier_next_medal, nextMedal.label(context), nextMedal.thresholdPercent)
+        else -> stringResource(R.string.quartier_all_medals)
+    }
+    val medalDate = medal?.let { progress.medalDates[it] }?.let {
+        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(DAY_MONTH)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(progress.quartier.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            if (medal != null) Text(medal.emoji, modifier = Modifier.padding(end = 8.dp))
+            Text(
+                stringResource(R.string.quartier_percent, formatPercent(progress.percent)),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        // La barre est pleine à 75 % (médaille "Maîtrisé"), le maximum réaliste.
+        LinearProgressIndicator(
+            progress = { (progress.percent / Medal.MASTERED.thresholdPercent).toFloat().coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(2.dp))
+        Row {
+            Text(detail, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+            if (medal != null && medalDate != null) {
+                Text(
+                    stringResource(R.string.quartier_medal_on, medal.label(context), medalDate),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+    }
+}
