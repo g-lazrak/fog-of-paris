@@ -27,9 +27,6 @@
     <string name="arrondissement_first">1er arrondissement</string>
     <string name="arrondissement_nth">%1$de arrondissement</string>
     <string name="quartier_percent">%1$s %%</string>
-    <string name="quartier_next_medal">Prochaine : %1$s à %2$d %%</string>
-    <string name="quartier_all_medals">Toutes les médailles !</string>
-    <string name="quartier_medal_on">%1$s le %2$s</string>
     <string name="medal_bronze">Bronze</string>
     <string name="medal_silver">Argent</string>
     <string name="medal_gold">Or</string>

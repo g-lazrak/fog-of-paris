@@ -115,9 +115,11 @@ Personal project, not published on the Play Store for now.
 - **Grid**: square cells of **50 m**, equirectangular approximation (fine at the
   scale of Paris). Cells identified by a `data class CellId(x, y)`.
 - **Fog rendering** (since Phase 6): a small alpha image over Paris's grid
-  extent (2 px per cell, `FogMask.kt`) shown as a MapLibre ImageSource with
-  linear resampling, which gives soft edges; black outside Paris is a polygon
-  layer on top. The map must stay edge-to-edge (it goes under the status and
+  extent (4 px per cell, `FogMask.kt`) shown as a MapLibre ImageSource with
+  linear resampling. Each visited cell clears a soft disc (not a square) so
+  neighbouring cells blend into a continuous trail — owner found squares too
+  blocky. Rendering only: scoring still counts whole cells. Black outside
+  Paris is a polygon layer on top. The map must stay edge-to-edge (it goes under the status and
   navigation bars; UI controls must respect system insets). UI texts are in
   French (owner's choice); map labels use `name:fr`.
 - Dependency versions centralized in `gradle/libs.versions.toml`.

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,8 +42,6 @@ import com.glazrak.fogofparis.domain.Medal
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.WeekCount
-import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -99,10 +98,17 @@ private fun SummaryCard(summary: GameSummary, progress: List<QuartierProgress>) 
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
         )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Medal.entries.forEach { medal ->
-                Text("${medal.emoji} ${medalCounts[medal]}", style = MaterialTheme.typography.titleMedium)
+                // Pastille teintée de la couleur de la médaille.
+                Surface(shape = RoundedCornerShape(50), color = medal.color.copy(alpha = 0.18f)) {
+                    Text(
+                        "${medal.emoji} ${medalCounts[medal]}",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
     }
@@ -157,45 +163,33 @@ private fun ArrondissementHeader(arrondissement: Int) {
 
 @Composable
 private fun QuartierRow(progress: QuartierProgress, onClick: () -> Unit) {
-    val context = LocalContext.current
-    val medal = progress.medal
-    val nextMedal = Medal.entries.firstOrNull { it !in progress.medalDates }
-    val detail = when {
-        nextMedal != null -> stringResource(R.string.quartier_next_medal, nextMedal.label(context), nextMedal.thresholdPercent)
-        else -> stringResource(R.string.quartier_all_medals)
-    }
-    val medalDate = medal?.let { progress.medalDates[it] }?.let {
-        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(DAY_MONTH)
-    }
+    // La couleur de la barre dit la médaille ; gris tant qu'il n'y en a pas.
+    val barColor = progress.medal?.color ?: MaterialTheme.colorScheme.outline
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(progress.quartier.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            if (medal != null) Text(medal.emoji, modifier = Modifier.padding(end = 8.dp))
             Text(
                 stringResource(R.string.quartier_percent, formatPercent(progress.percent)),
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (progress.medal != null) barColor else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         // La barre est pleine à 75 % (médaille "Maîtrisé"), le maximum réaliste.
         LinearProgressIndicator(
             progress = { (progress.percent / Medal.MASTERED.thresholdPercent).toFloat().coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth(),
+            color = barColor,
+            trackColor = barColor.copy(alpha = 0.18f),
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+            modifier = Modifier.fillMaxWidth().height(6.dp),
         )
-        Spacer(Modifier.height(2.dp))
-        Row {
-            Text(detail, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
-            if (medal != null && medalDate != null) {
-                Text(
-                    stringResource(R.string.quartier_medal_on, medal.label(context), medalDate),
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        }
     }
 }
