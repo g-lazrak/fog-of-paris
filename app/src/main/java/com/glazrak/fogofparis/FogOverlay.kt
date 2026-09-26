@@ -7,6 +7,7 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Overlay
+import android.util.Log
 
 class FogOverlay(
     private var visitedCells: Set<CellId>
@@ -35,10 +36,15 @@ class FogOverlay(
         // Calque temporaire pour isoler le CLEAR de la carte en dessous.
         val saveCount = canvas.saveLayer(null, null)
 
+        // Récupérer le vrai rectangle
+        val screenRect = projection.getIntrinsicScreenRect()
+        Log.d("FogOverlay", "screenRect = $screenRect")
+        Log.d("FogOverlay", "canvas = ${canvas.width} x ${canvas.height}")
+
         // 1. Voile sombre sur tout l'écran.
         canvas.drawRect(
-            0f, 0f,
-            canvas.width.toFloat(), canvas.height.toFloat(),
+            screenRect.left.toFloat(), screenRect.top.toFloat(),
+            screenRect.right.toFloat(), screenRect.bottom.toFloat(),
             fogPaint
         )
 

@@ -1,0 +1,173 @@
+# CLAUDE.md — Fog of Paris
+
+Context file for Claude Code. Read it at the start of every session.
+
+---
+
+## 1. How to work with the owner (READ FIRST)
+
+The owner is **not an Android developer and not an app designer**. He knows
+some Python (data analysis). He supervises this project; he does not write
+the code. Communication rules:
+
+- **Explain in plain language.** Before any non-trivial change, say in a few
+  simple sentences *what* you are going to do and *why*, as you would to a
+  smart non-developer. No unexplained jargon: if you must use a technical term
+  (e.g. "foreground service", "ViewModel", "migration"), define it in one line
+  the first time.
+- **Ask before big decisions.** Anything structural (new library, database
+  schema, architecture change, new permission, anything affecting battery or
+  privacy) → present the options with pros/cons in simple terms, give your
+  recommendation, and wait for approval.
+- **Summarize after each task**: what changed, in 2–5 plain sentences, and
+  **exactly how to test it** on the phone (which button to press, where to walk,
+  what he should see).
+- **Guide him through Android Studio** when he has to do something himself
+  (run the app, grant a permission, use the emulator's fake location, read an
+  error). Give step-by-step instructions; don't assume he knows where things are.
+- Keep explanations short. Clarity over completeness.
+- The owner writes in French or English; answer in the language he uses.
+
+---
+
+## 2. Vision
+
+An Android app (Kotlin) that applies the video-game "fog of war" to Paris.
+The city starts covered in dark fog. **Walking** through the streets reveals
+the areas you pass through, permanently. Later: a game layer with points per
+neighborhood and progress stats. All data stays on the phone.
+
+Target device: Google Pixel 9a. Dev environment: Windows + Android Studio.
+Personal project, not published on the Play Store for now.
+
+---
+
+## 3. Game rules (decided — do not reinvent)
+
+1. **Walking only.** Only movement on foot reveals cells. Car, bike, metro,
+   RER, bus must NOT reveal anything.
+   - Use Google's **Activity Recognition Transition API** (detects walking vs
+     vehicle vs bicycle), combined with a **speed filter** (reject fixes above
+     a walking threshold, ~7 km/h) and an **accuracy filter** (ignore imprecise
+     fixes, e.g. accuracy worse than ~30 m).
+   - **Never interpolate across GPS gaps.** In the metro the GPS goes silent
+     and reappears elsewhere; the jump must not reveal the path in between.
+     Only reveal the cell of each accepted fix (optionally fill straight lines
+     between two *close, recent, walking* fixes, never across a gap).
+2. **Playable area = the administrative limits of the city of Paris.**
+   - This includes Bois de Boulogne and Bois de Vincennes (they are part of
+     the commune, even though they lie outside the périphérique).
+   - Use the official commune boundary from Paris OpenData (or the union of
+     the 20 arrondissements). Store it as a bundled GeoJSON asset. Use a
+     point-in-polygon test.
+   - Rendering: inside the city = fog that clears when visited. Outside =
+     solid black, not playable, never revealed.
+3. **Works in the background, app closed.** The phone stays in the pocket.
+   - Implement a **foreground service** (persistent notification) for tracking.
+   - Android 14+ requirements: declare `foregroundServiceType="location"` and
+     the `FOREGROUND_SERVICE_LOCATION` permission; request
+     `ACCESS_BACKGROUND_LOCATION` separately, after foreground location.
+   - Add a clear on/off switch for tracking in the UI.
+   - **Battery matters**: use balanced intervals, pause or slow down updates
+     when the user is not walking (activity recognition helps here).
+4. **Gamification (later phase).** Points per neighborhood.
+   - Default neighborhood unit: Paris's **80 "quartiers administratifs"**
+     (4 per arrondissement), boundaries from Paris OpenData (GeoJSON, bundled).
+   - Ideas: % of each quartier revealed, points/badges when a quartier reaches
+     thresholds (e.g. 25/50/100%), global % of Paris revealed, history over time.
+   - Propose the exact scoring rules to the owner before implementing.
+
+---
+
+## 4. Technical direction
+
+- **Kotlin + Jetpack Compose** (Material 3).
+- **Architecture**: simple MVVM — UI (Compose) → ViewModel → Repository →
+  data sources (database, location). Keep it as simple as possible; explain it
+  to the owner once, in plain words.
+- **Location**: Google Play Services `FusedLocationProviderClient` (replaces the
+  old `LocationManager` approach — better battery, better background behavior).
+- **Walking detection**: Activity Recognition Transition API
+  (`ACTIVITY_RECOGNITION` permission).
+- **Storage**: **Room** (SQLite) from the start, because gamification needs
+  richer data than a simple set (visit timestamps, per-quartier aggregates).
+  Suggested tables: visited cells (cellX, cellY, firstVisitedAt), and later
+  derived stats. No cloud, no network sync.
+- **Map**: currently osmdroid 6.1.20 with standard OpenStreetMap tiles.
+  At the start of the rebuild, **check osmdroid's maintenance status and
+  compare with MapLibre Android**; recommend one to the owner in plain terms.
+  Note: OSM's public tile servers have a usage policy — fine for personal use,
+  but a different tile provider would be needed if the app is ever published.
+- **Grid**: square cells of **50 m**, equirectangular approximation (fine at the
+  scale of Paris). Cells identified by a `data class CellId(x, y)`.
+- **Fog rendering**: a full-screen dark layer with holes for visited cells.
+  Must cover the whole screen edge-to-edge (the map goes under the status and
+  navigation bars; UI controls must respect system insets). Only draw cells
+  inside the visible viewport, for performance.
+- Dependency versions centralized in `gradle/libs.versions.toml`.
+- Use current, stable library versions; verify them rather than guessing.
+
+---
+
+## 5. Existing code (first prototype)
+
+A working prototype exists (map + position marker + fog + persistence), built
+while the owner was learning. **A clean rebuild is acceptable and expected**,
+because the target architecture (background service, Room, walking detection)
+differs a lot. Reuse what is good:
+
+- `Grid.kt` — `CellId`, `latLonToCell`, `cellToBounds`. Correct and tested;
+  keep the logic (constants: 50 m cells, meters per degree computed at
+  latitude 48.85°).
+- `GridTest.kt` — unit tests (origin, inside-cell, round-trip). Keep them and
+  keep them green.
+- `FogOverlay.kt` — osmdroid overlay using `saveLayer` + `PorterDuff.Mode.CLEAR`.
+  Lessons learned: use `projection.getIntrinsicScreenRect()`, recompute pixel
+  positions on every draw (the projection changes on scroll/zoom).
+- Known bug from the prototype: the Scaffold's `innerPadding` shrank the map,
+  so the fog didn't cover the top/bottom of the screen. The map must be
+  edge-to-edge.
+- Persistence was a DataStore `Set<String>` ("x,y") — to be replaced by Room.
+
+Package name: `com.glazrak.fogofparis`.
+
+---
+
+## 6. Product backlog (not yet scheduled)
+
+- Better name, in French (ideas: "Paris Dévoilé", "Terra Incognita").
+- "Recenter on my position" button; center on user at launch.
+- GPS status indicator (searching / active / paused because not walking).
+- Global progress stat (% of Paris revealed).
+- Softer hole edges (nicer than hard squares).
+- Export/share the revealed map as an image.
+
+---
+
+## 7. Code conventions
+
+- Dedicated types for domain concepts (data classes like `CellId`) rather than
+  generic tuples/pairs.
+- Named arguments when calling Kotlin functions with several same-typed
+  parameters. (Not available for Java constructors, e.g. osmdroid's
+  `BoundingBox` → positional args + a comment giving the order.)
+- Comments explain *why*, not *what*. Keep them in sync with the code.
+- Naming: `camelCase` for variables/functions, `PascalCase` for types,
+  `SCREAMING_SNAKE_CASE` for constants.
+- Log errors (`Log.e`) instead of swallowing exceptions silently.
+- Pure logic (grid, filters, scoring, point-in-polygon) lives in plain Kotlin
+  files with unit tests.
+
+---
+
+## 8. Workflow
+
+- **Claude Code makes the commits.** Small, coherent commits; messages in
+  English, imperative mood, with prefixes (`feat:`, `fix:`, `refactor:`,
+  `chore:`, `test:`). Commit before any large multi-file change so it can be
+  rolled back. Push to GitHub when a step is stable and the app builds.
+- Work in **phases**; at the end of each phase the app must build and run.
+- Run the unit tests before committing; keep them green.
+- After each phase: plain-language summary + how to test it on the Pixel
+  (and in the emulator using fake locations / routes when relevant).
+- Privacy: location data never leaves the device.
