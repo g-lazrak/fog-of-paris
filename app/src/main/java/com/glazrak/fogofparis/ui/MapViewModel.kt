@@ -9,12 +9,15 @@ import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.GeoPosition
+import com.glazrak.fogofparis.domain.TrackingStatus
+import com.glazrak.fogofparis.domain.trackingStatus
 import com.glazrak.fogofparis.tracking.TrackingService
 import com.glazrak.fogofparis.tracking.TrackingState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -29,6 +32,15 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     val isTracking: StateFlow<Boolean> = TrackingState.isTracking
     val currentPosition: StateFlow<GeoPosition?> = TrackingState.lastPosition
+
+    // null quand le suivi est arrêté (rien à afficher).
+    val trackingStatus: StateFlow<TrackingStatus?> = combine(
+        TrackingState.isTracking,
+        TrackingState.movement,
+        TrackingState.hasPreciseFix,
+    ) { tracking, movement, precise ->
+        if (tracking) trackingStatus(movement, precise) else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // null tant que le fichier des arrondissements n'est pas lu (quelques ms).
     private val _parisBoundary = MutableStateFlow<CityBoundary?>(null)

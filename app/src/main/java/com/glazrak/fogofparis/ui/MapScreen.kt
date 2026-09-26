@@ -8,16 +8,28 @@ import android.view.Gravity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import com.glazrak.fogofparis.domain.TrackingStatus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,17 +67,20 @@ private const val INITIAL_ZOOM = 12.0
 fun MapScreen(viewModel: MapViewModel = viewModel()) {
     val context = LocalContext.current
     val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
+    val trackingStatus by viewModel.trackingStatus.collectAsStateWithLifecycle()
 
-    // Android affiche les demandes l'une après l'autre (position, puis notifications).
+    // Android affiche les demandes l'une après l'autre (position, activité, notifications).
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        // Sans position précise, rien ne serait révélé (précision de plusieurs km).
+        // Sans position précise ou sans détection d'activité, rien ne serait jamais révélé.
         // Sans notifications, le suivi marche quand même, la notification est juste masquée.
-        if (isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION)) {
-            viewModel.startTracking()
-        } else {
-            Toast.makeText(context, R.string.precise_location_needed, Toast.LENGTH_LONG).show()
+        when {
+            !isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION) ->
+                Toast.makeText(context, R.string.precise_location_needed, Toast.LENGTH_LONG).show()
+            !hasActivityRecognition(context) ->
+                Toast.makeText(context, R.string.activity_permission_needed, Toast.LENGTH_LONG).show()
+            else -> viewModel.startTracking()
         }
     }
     val onToggleTracking = {
@@ -128,14 +143,51 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        TrackingButton(
-            isTracking = isTracking,
-            onClick = onToggleTracking,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(bottom = 24.dp),
-        )
+        ) {
+            trackingStatus?.let { StatusLabel(it) }
+            TrackingButton(isTracking = isTracking, onClick = onToggleTracking)
+        }
+    }
+}
+
+@Composable
+private fun StatusLabel(status: TrackingStatus) {
+    val text = stringResource(
+        when (status) {
+            TrackingStatus.REVEALING -> R.string.status_revealing
+            TrackingStatus.SEARCHING_GPS -> R.string.status_searching_gps
+            TrackingStatus.WAITING_DETECTION -> R.string.status_waiting_detection
+            TrackingStatus.PAUSED_STILL -> R.string.status_paused_still
+            TrackingStatus.PAUSED_VEHICLE -> R.string.status_paused_vehicle
+            TrackingStatus.PAUSED_BICYCLE -> R.string.status_paused_bicycle
+        }
+    )
+    // Vert uniquement quand des cases peuvent se révéler, gris sinon.
+    val dotColor = if (status == TrackingStatus.REVEALING) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(dotColor, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = text, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
@@ -156,12 +208,18 @@ private fun TrackingButton(isTracking: Boolean, onClick: () -> Unit, modifier: M
     )
 }
 
-// Notifications : permission à demander seulement depuis Android 13.
+// Activité physique : à demander depuis Android 10 ; notifications : depuis Android 13.
+// Avant, ces permissions sont accordées à l'installation.
 private fun requiredPermissions(): List<String> = buildList {
     add(Manifest.permission.ACCESS_FINE_LOCATION)
     add(Manifest.permission.ACCESS_COARSE_LOCATION)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(Manifest.permission.ACTIVITY_RECOGNITION)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
 }
+
+private fun hasActivityRecognition(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+        isGranted(context, Manifest.permission.ACTIVITY_RECOGNITION)
 
 private fun isGranted(context: Context, permission: String): Boolean =
     ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

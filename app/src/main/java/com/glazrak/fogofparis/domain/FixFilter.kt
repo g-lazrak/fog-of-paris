@@ -12,12 +12,13 @@ data class LocationFix(
     val timeMillis: Long,
 )
 
-enum class FixRejection { INACCURATE, TOO_FAST, OUTSIDE_PARIS }
+enum class FixRejection { NOT_ON_FOOT, INACCURATE, TOO_FAST, OUTSIDE_PARIS }
 
 const val MAX_ACCURACY_METERS = 30f
 
-// ~12 km/h : la course à pied compte, un bus lancé non. Ce n'est qu'un
-// filet de sécurité ; la détection de marche (phase 5) fera le vrai tri.
+// ~12 km/h : la course à pied compte, un bus lancé non. Ce n'est qu'un filet
+// de sécurité pendant les secondes où la détection d'activité a du retard
+// (ex. on vient de monter dans un bus qui démarre).
 const val MAX_ON_FOOT_SPEED_MPS = 12.0 / 3.6
 
 // Sans vitesse GPS, on la déduit du déplacement depuis la position précédente,
@@ -29,7 +30,14 @@ private const val MAX_INTERVAL_FOR_IMPLIED_SPEED_MS = 60_000L
 
 // null = position acceptée. Ne révèle jamais de chemin entre deux positions :
 // seule la cellule de la position acceptée compte.
-fun rejectionReason(fix: LocationFix, previous: LocationFix?, city: CityBoundary): FixRejection? {
+fun rejectionReason(
+    fix: LocationFix,
+    previous: LocationFix?,
+    city: CityBoundary,
+    movement: Movement,
+): FixRejection? {
+    // Règle principale : il faut qu'Android affirme qu'on est à pied.
+    if (movement != Movement.ON_FOOT) return FixRejection.NOT_ON_FOOT
     val accuracy = fix.accuracyMeters
     if (accuracy == null || accuracy > MAX_ACCURACY_METERS) return FixRejection.INACCURATE
     val speed = fix.speedMetersPerSecond?.toDouble() ?: impliedSpeed(previous, fix)

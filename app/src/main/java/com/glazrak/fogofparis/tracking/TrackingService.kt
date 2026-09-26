@@ -23,6 +23,8 @@ import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.LocationFix
+import com.glazrak.fogofparis.domain.MAX_ACCURACY_METERS
+import com.glazrak.fogofparis.domain.Movement
 import com.glazrak.fogofparis.domain.latLonToCell
 import com.glazrak.fogofparis.domain.rejectionReason
 import com.google.android.gms.location.LocationCallback
@@ -34,6 +36,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 // Service "de premier plan" : Android le laisse tourner écran éteint et app
@@ -88,18 +92,32 @@ class TrackingService : Service() {
         }
         isRunning = true
         TrackingState.setTracking(true)
-        requestLocationUpdates()
+        ActivityTransitionReceiver.register(this)
+        // Change le rythme du GPS à chaque changement d'activité (économie de batterie).
+        scope.launch {
+            TrackingState.movement
+                .map { it == Movement.ON_FOOT }
+                .distinctUntilChanged()
+                .collect { onFoot -> requestLocationUpdates(onFoot) }
+        }
     }
 
     @SuppressLint("MissingPermission") // Vérifiée par l'écran avant de démarrer le service.
-    private fun requestLocationUpdates() {
-        // GPS précis toutes les ~5 s : nécessaire pour des cellules de 50 m.
-        // La phase 5 ralentira le rythme quand on ne marche pas (batterie).
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
-            .setMinUpdateIntervalMillis(FASTEST_INTERVAL_MS)
-            .setMinUpdateDistanceMeters(MIN_UPDATE_DISTANCE_M)
-            .build()
+    private fun requestLocationUpdates(onFoot: Boolean) {
+        val request = if (onFoot) {
+            // GPS précis toutes les ~5 s : nécessaire pour des cellules de 50 m.
+            LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, ON_FOOT_INTERVAL_MS)
+                .setMinUpdateIntervalMillis(ON_FOOT_FASTEST_INTERVAL_MS)
+                .setMinUpdateDistanceMeters(MIN_UPDATE_DISTANCE_M)
+                .build()
+        } else {
+            // Pas à pied : rien à révéler. Position approximative (Wi-Fi / antennes,
+            // quasi sans GPS) une fois par minute, juste pour garder le point à jour.
+            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, PAUSED_INTERVAL_MS)
+                .build()
+        }
         try {
+            // Remplace la demande précédente (même callback).
             locationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
         } catch (e: SecurityException) {
             Log.e(TAG, "Location permission missing", e)
@@ -114,12 +132,15 @@ class TrackingService : Service() {
             speedMetersPerSecond = if (location.hasSpeed()) location.speed else null,
             timeMillis = location.time,
         )
-        TrackingState.setPosition(fix.position)
+        val isPrecise = fix.accuracyMeters != null && fix.accuracyMeters <= MAX_ACCURACY_METERS
+        TrackingState.setPosition(fix.position, isPrecise)
+        // Activité au moment de la position, pas au moment du traitement.
+        val movement = TrackingState.movement.value
         val previous = previousFix
         previousFix = fix
         scope.launch {
             val paris = ParisBoundaryCache.get(applicationContext)
-            val rejection = rejectionReason(fix, previous, paris)
+            val rejection = rejectionReason(fix, previous, paris, movement)
             if (rejection != null) {
                 Log.d(TAG, "Fix ignored: $rejection")
                 return@launch
@@ -138,6 +159,7 @@ class TrackingService : Service() {
 
     private fun stopTracking() {
         locationClient.removeLocationUpdates(locationCallback)
+        ActivityTransitionReceiver.unregister(this)
         isRunning = false
         TrackingState.setTracking(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -146,6 +168,7 @@ class TrackingService : Service() {
 
     override fun onDestroy() {
         locationClient.removeLocationUpdates(locationCallback)
+        ActivityTransitionReceiver.unregister(this)
         TrackingState.setTracking(false)
         scope.cancel()
         super.onDestroy()
@@ -188,8 +211,9 @@ class TrackingService : Service() {
         private const val CHANNEL_ID = "tracking"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_STOP = "com.glazrak.fogofparis.action.STOP_TRACKING"
-        private const val UPDATE_INTERVAL_MS = 5_000L
-        private const val FASTEST_INTERVAL_MS = 2_000L
+        private const val ON_FOOT_INTERVAL_MS = 5_000L
+        private const val ON_FOOT_FASTEST_INTERVAL_MS = 2_000L
+        private const val PAUSED_INTERVAL_MS = 60_000L
         private const val MIN_UPDATE_DISTANCE_M = 5f
 
         // À appeler depuis l'écran, app visible, une fois la permission accordée.
