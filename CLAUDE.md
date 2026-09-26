@@ -44,12 +44,17 @@ Personal project, not published on the Play Store for now.
 
 ## 3. Game rules (decided — do not reinvent)
 
-1. **Walking only.** Only movement on foot reveals cells. Car, bike, metro,
+1. **On foot only.** Walking *and running* reveal cells. Car, bike, metro,
    RER, bus must NOT reveal anything.
-   - Use Google's **Activity Recognition Transition API** (detects walking vs
-     vehicle vs bicycle), combined with a **speed filter** (reject fixes above
-     a walking threshold, ~7 km/h) and an **accuracy filter** (ignore imprecise
-     fixes, e.g. accuracy worse than ~30 m).
+   - The main filter is Google's **Activity Recognition Transition API**:
+     reveal only while it *positively* reports walking/running (on foot).
+     "Still" or "in vehicle" never reveals. Speed alone is NOT reliable
+     (slow buses/trams in traffic), as the owner pointed out.
+   - Safety nets: a **speed filter** (reject fixes above ~12 km/h, so running
+     still counts; mainly covers the detection lag when boarding a vehicle)
+     and an **accuracy filter** (ignore fixes worse than ~30 m).
+   - Walking detection arrives in Phase 5; Phase 4 ships with the speed and
+     accuracy filters only (owner's decision, 2026-09-26).
    - **Never interpolate across GPS gaps.** In the metro the GPS goes silent
      and reappears elsewhere; the jump must not reveal the path in between.
      Only reveal the cell of each accepted fix (optionally fill straight lines
