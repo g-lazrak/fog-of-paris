@@ -178,4 +178,6 @@ Package name: `com.glazrak.fogofparis`.
 - Run the unit tests before committing; keep them green.
 - After each phase: plain-language summary + how to test it on the Pixel
   (and in the emulator using fake locations / routes when relevant).
-- Privacy: location data never leaves the device.
+- Privacy: location data never leaves the device. Cloud backup is disabled
+  (`allowBackup="false"` + exclude-all rules, owner's decision 2026-09-26);
+  direct phone-to-phone transfer is still allowed.

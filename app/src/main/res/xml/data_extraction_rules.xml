@@ -1,19 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Les cellules révélées sont un historique de déplacements :
+     jamais de sauvegarde dans le cloud (Google Drive). Le transfert direct vers
+     un nouveau téléphone (câble / Wi-Fi local) reste permis : les données ne
+     passent par aucun serveur. -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
-    <!--
-    <device-transfer>
-        <include .../>
-        <exclude .../>
-    </device-transfer>
-    -->
 </data-extraction-rules>
