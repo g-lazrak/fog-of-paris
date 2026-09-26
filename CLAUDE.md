@@ -108,10 +108,12 @@ Personal project, not published on the Play Store for now.
   but a different tile provider would be needed if the app is ever published.
 - **Grid**: square cells of **50 m**, equirectangular approximation (fine at the
   scale of Paris). Cells identified by a `data class CellId(x, y)`.
-- **Fog rendering**: a full-screen dark layer with holes for visited cells.
-  Must cover the whole screen edge-to-edge (the map goes under the status and
-  navigation bars; UI controls must respect system insets). Only draw cells
-  inside the visible viewport, for performance.
+- **Fog rendering** (since Phase 6): a small alpha image over Paris's grid
+  extent (2 px per cell, `FogMask.kt`) shown as a MapLibre ImageSource with
+  linear resampling, which gives soft edges; black outside Paris is a polygon
+  layer on top. The map must stay edge-to-edge (it goes under the status and
+  navigation bars; UI controls must respect system insets). UI texts are in
+  French (owner's choice); map labels use `name:fr`.
 - Dependency versions centralized in `gradle/libs.versions.toml`.
 - Use current, stable library versions; verify them rather than guessing.
 
@@ -143,12 +145,12 @@ Package name: `com.glazrak.fogofparis`.
 
 ## 6. Product backlog (not yet scheduled)
 
-- Better name, in French (ideas: "Paris Dévoilé", "Terra Incognita").
-- "Recenter on my position" button; center on user at launch.
-- GPS status indicator (searching / active / paused because not walking).
-- Global progress stat (% of Paris revealed).
-- Softer hole edges (nicer than hard squares).
+- Better name, in French (ideas: "Paris Dévoilé", "Terra Incognita") — owner
+  will decide later.
 - Export/share the revealed map as an image.
+- Manual export/import of progress (cloud backup is disabled).
+- Done in Phase 6: recenter button, center on user at launch, GPS status
+  label, % of Paris revealed, soft fog edges.
 
 ---
 

@@ -1,6 +1,8 @@
 package com.glazrak.fogofparis.data
 
 import com.glazrak.fogofparis.domain.CityBoundary
+import com.glazrak.fogofparis.domain.CityCells
+import com.glazrak.fogofparis.domain.latLonToCell
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.areaInSquareMeters
 import org.junit.Assert.assertEquals
@@ -32,6 +34,22 @@ class ParisBoundaryTest {
     fun outline_area_matches_official_paris_area() {
         // Superficie officielle de la commune : ~105,4 km².
         assertEquals(105.4, areaInSquareMeters(paris.rings.single()) / 1_000_000, 1.0)
+    }
+
+    @Test
+    fun paris_cells_add_up_to_the_city_area() {
+        val cells = CityCells.of(paris)
+        // 105,4 km² / 2 500 m² par cellule ≈ 42 160 cellules.
+        assertEquals(42_160.0, cells.totalCells.toDouble(), 42_160.0 * 0.01)
+    }
+
+    @Test
+    fun paris_cells_match_point_in_polygon_on_landmarks() {
+        val cells = CityCells.of(paris)
+        val eiffel = latLonToCell(48.8584, 2.2945)
+        val boulogneBillancourt = latLonToCell(48.8350, 2.2400)
+        assertTrue(cells.contains(eiffel))
+        assertFalse(cells.contains(boulogneBillancourt))
     }
 
     @Test

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.view.Gravity
 import android.widget.Toast
+import java.util.Locale
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -26,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.Color
@@ -55,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
@@ -62,6 +65,7 @@ import org.maplibre.android.maps.Style
 
 private val PARIS_CENTER = LatLng(48.8566, 2.3522)
 private const val INITIAL_ZOOM = 12.0
+private const val RECENTER_ZOOM = 15.5
 
 @Composable
 fun MapScreen(viewModel: MapViewModel = viewModel()) {
@@ -92,7 +96,29 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
         }
     }
 
-    val visitedCells by viewModel.visitedCells.collectAsStateWithLifecycle()
+    // "Me recentrer" : demande seulement la position (pas les autres permissions du suivi).
+    val recenterPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        if (isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            viewModel.recenter()
+        } else {
+            Toast.makeText(context, R.string.precise_location_needed, Toast.LENGTH_LONG).show()
+        }
+    }
+    val onRecenter = {
+        if (isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            viewModel.recenter()
+        } else {
+            recenterPermissionLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+        }
+    }
+
+    val fogImage by viewModel.fogImage.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val cameraTarget by viewModel.cameraTarget.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
     val parisBoundary by viewModel.parisBoundary.collectAsStateWithLifecycle()
 
@@ -107,6 +133,7 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                 .zoom(INITIAL_ZOOM)
                 .build()
             loadedMap.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { loadedStyle ->
+                useFrenchLabels(loadedStyle)
                 addGameLayers(loadedStyle)
                 style = loadedStyle
             }
@@ -114,8 +141,18 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
         }
     }
 
-    LaunchedEffect(style, visitedCells) {
-        style?.let { updateFog(it, visitedCells) }
+    LaunchedEffect(style, fogImage) {
+        val fog = fogImage ?: return@LaunchedEffect
+        style?.let { updateFog(it, fog) }
+    }
+    LaunchedEffect(map, cameraTarget) {
+        val target = cameraTarget ?: return@LaunchedEffect
+        map?.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(
+                LatLng(target.position.lat, target.position.lon),
+                RECENTER_ZOOM,
+            )
+        )
     }
     LaunchedEffect(style, parisBoundary) {
         val boundary = parisBoundary ?: return@LaunchedEffect
@@ -143,6 +180,30 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+        progress?.let {
+            ProgressLabel(
+                progress = it,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(top = 12.dp),
+            )
+        }
+        SmallFloatingActionButton(
+            onClick = onRecenter,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                // Au-dessus du bouton (i) des crédits de la carte.
+                .padding(end = 16.dp, bottom = 56.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_my_location),
+                contentDescription = stringResource(R.string.recenter),
+            )
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -154,6 +215,25 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
             trackingStatus?.let { StatusLabel(it) }
             TrackingButton(isTracking = isTracking, onClick = onToggleTracking)
         }
+    }
+}
+
+@Composable
+private fun ProgressLabel(progress: Progress, modifier: Modifier = Modifier) {
+    // Une cellule = 0,002 % de Paris : on garde 2 décimales tant qu'on est sous 10 %.
+    val decimals = if (progress.percent < 10) 2 else 1
+    val percent = String.format(Locale.FRANCE, "%.${decimals}f", progress.percent)
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier,
+    ) {
+        Text(
+            text = stringResource(R.string.progress_label, percent),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        )
     }
 }
 

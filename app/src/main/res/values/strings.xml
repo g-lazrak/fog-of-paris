@@ -1,17 +1,19 @@
 <resources>
     <string name="app_name">FogOfParis</string>
-    <string name="tracking_channel_name">Walk tracking</string>
-    <string name="tracking_notification_title">Revealing Paris</string>
-    <string name="tracking_notification_text">Walk tracking is on. Location stays on your phone.</string>
-    <string name="tracking_notification_stop">Stop</string>
-    <string name="tracking_start">Start tracking</string>
-    <string name="tracking_stop">Stop tracking</string>
-    <string name="precise_location_needed">Precise location is needed to reveal 50 m squares.</string>
-    <string name="activity_permission_needed">Physical activity access is needed to tell walking from riding.</string>
-    <string name="status_revealing">Revealing</string>
-    <string name="status_searching_gps">Walking · searching for GPS…</string>
-    <string name="status_waiting_detection">Waiting for walking detection…</string>
-    <string name="status_paused_still">Paused · not moving</string>
-    <string name="status_paused_vehicle">Paused · in a vehicle</string>
-    <string name="status_paused_bicycle">Paused · on a bike</string>
+    <string name="tracking_channel_name">Suivi de la marche</string>
+    <string name="tracking_notification_title">Paris se dévoile</string>
+    <string name="tracking_notification_text">Suivi de la marche actif. Votre position reste sur votre téléphone.</string>
+    <string name="tracking_notification_stop">Arrêter</string>
+    <string name="tracking_start">Démarrer le suivi</string>
+    <string name="tracking_stop">Arrêter le suivi</string>
+    <string name="precise_location_needed">La position précise est nécessaire pour révéler des carrés de 50 m.</string>
+    <string name="activity_permission_needed">L\'accès à l\'activité physique est nécessaire pour distinguer la marche des transports.</string>
+    <string name="status_revealing">Révélation en cours</string>
+    <string name="status_searching_gps">À pied · recherche du GPS…</string>
+    <string name="status_waiting_detection">En attente de la détection de marche…</string>
+    <string name="status_paused_still">En pause · immobile</string>
+    <string name="status_paused_vehicle">En pause · en véhicule</string>
+    <string name="status_paused_bicycle">En pause · à vélo</string>
+    <string name="progress_label">Paris dévoilé : %1$s %%</string>
+    <string name="recenter">Me recentrer</string>
 </resources>
