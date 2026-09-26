@@ -1,4 +1,4 @@
-package com.glazrak.fogofparis
+package com.glazrak.fogofparis.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

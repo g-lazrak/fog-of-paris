@@ -1,4 +1,4 @@
-package com.glazrak.fogofparis
+package com.glazrak.fogofparis.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import com.glazrak.fogofparis.domain.CellId
 
 // Crée (une seule fois) un DataStore nommé "fog_data", accessible via context.dataStore.
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "fog_data")
