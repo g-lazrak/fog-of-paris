@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import com.glazrak.fogofparis.MainActivity
 import com.glazrak.fogofparis.R
 import com.glazrak.fogofparis.data.ParisGeoCache
+import com.glazrak.fogofparis.data.SettingsStore
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.GeoPosition
@@ -51,6 +52,7 @@ class TrackingService : Service() {
     private val locationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val repository by lazy { VisitedCellsRepository.create(this) }
     private val rewardNotifier by lazy { RewardNotifier(this, repository) }
+    private val nearbyAlerter by lazy { NearbyAlerter(this, SettingsStore(this)) }
     private val processingMutex = Mutex()
 
     private var previousFix: LocationFix? = null
@@ -164,6 +166,13 @@ class TrackingService : Service() {
             rewardNotifier.ensureLoaded(geo)
             val isNew = repository.recordVisit(cell, timeMillis = fix.timeMillis)
             if (isNew) rewardNotifier.onNewCell(cell, geo)
+            nearbyAlerter.onCellEntered(
+                wasNew = isNew,
+                position = fix.position,
+                timeMillis = fix.timeMillis,
+                geo = geo,
+                visitedPlaceIds = rewardNotifier.visitedPlaceIds(),
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Could not save visited cell $cell", e)
         }

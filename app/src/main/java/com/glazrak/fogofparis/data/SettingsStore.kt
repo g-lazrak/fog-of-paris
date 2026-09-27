@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -15,6 +16,7 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 
 private val NEARBY_ALERTS_KEY = booleanPreferencesKey("nearby_alerts")
 private val LAST_CELEBRATED_LEVEL_KEY = intPreferencesKey("last_celebrated_level")
+private val ANNOUNCED_PLACES_KEY = stringSetPreferencesKey("announced_places")
 
 class SettingsStore(private val context: Context) {
 
@@ -23,6 +25,14 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setNearbyAlerts(enabled: Boolean) {
         context.settingsDataStore.edit { it[NEARBY_ALERTS_KEY] = enabled }
+    }
+
+    // Lieux déjà signalés par l'alerte « lieu proche » : jamais deux fois le même,
+    // même des jours plus tard (sinon on serait prévenu à chaque trajet quotidien).
+    val announcedPlaces: Flow<Set<String>> = context.settingsDataStore.data.map { it[ANNOUNCED_PLACES_KEY].orEmpty() }
+
+    suspend fun addAnnouncedPlace(id: String) {
+        context.settingsDataStore.edit { it[ANNOUNCED_PLACES_KEY] = it[ANNOUNCED_PLACES_KEY].orEmpty() + id }
     }
 
     // Dernier niveau déjà fêté à l'écran ; null avant la toute première ouverture.

@@ -57,6 +57,8 @@ class RewardNotifier(
         )
     }
 
+    fun visitedPlaceIds(): Set<String> = counters?.visitedPlaceIds.orEmpty()
+
     fun onNewCell(cell: CellId, geo: ParisGeo) {
         val state = counters ?: return
         val pointsBefore = state.points

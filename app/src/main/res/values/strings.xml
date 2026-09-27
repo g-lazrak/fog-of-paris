@@ -107,6 +107,9 @@
     <string name="celebration_continue">Continuer</string>
     <string name="nearby_alerts_title">Me prévenir des lieux proches</string>
     <string name="nearby_alerts_text">Quand vous marchez dans des rues que vous connaissez déjà, le téléphone vibre et vous signale un lieu de collection pas encore visité à moins de 200 m. Rien ne s\'affiche quand vous explorez de nouvelles rues.</string>
+    <string name="nearby_channel_name">Lieux proches</string>
+    <string name="nearby_title">📍 %1$s est tout près</string>
+    <string name="nearby_text">À %1$s, et pas encore dans votre collection.</string>
     <string name="about_title">À propos</string>
     <string name="about_text">Carte : © contributeurs OpenStreetMap, OpenFreeMap. Limites de Paris et quartiers : Paris OpenData. Polices Fraunces et DM Sans (licence SIL Open Font). Vos déplacements restent sur votre téléphone.</string>
 </resources>
