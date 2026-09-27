@@ -70,6 +70,13 @@ fun collectionProgress(places: List<Place>, visitedCells: Set<CellId>): List<Col
 fun collectionPoints(progress: List<CollectionProgress>): Int =
     progress.sumOf { it.visitedCount * POINTS_PER_PLACE + (if (it.isComplete) POINTS_PER_COMPLETED_SET else 0) }
 
+// Date de découverte de chaque lieu visité : la première visite d'une des
+// cellules qui le valident. Sert à la liste « Derniers lieux découverts ».
+fun placeDiscoveryTimes(places: List<Place>, firstVisitByCell: Map<CellId, Long>): Map<String, Long> =
+    places.mapNotNull { place ->
+        cellsNear(place).mapNotNull { firstVisitByCell[it] }.minOrNull()?.let { place.id to it }
+    }.toMap()
+
 // Retrouve vite les lieux proches d'une cellule qui vient d'être révélée.
 class PlaceIndex(val places: List<Place>) {
     private val placesNearCell: Map<CellId, List<Place>> = buildMap<CellId, MutableList<Place>> {

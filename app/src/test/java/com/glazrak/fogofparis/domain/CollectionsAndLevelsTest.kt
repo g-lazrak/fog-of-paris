@@ -56,6 +56,15 @@ class CollectionsAndLevelsTest {
     }
 
     @Test
+    fun place_discovery_time_is_the_earliest_qualifying_visit() {
+        val c = cellOf(pontNeuf)
+        val times = mapOf(c to 5_000L, CellId(c.x + 1, c.y) to 2_000L, cellOf(pantheon) to 9_000L)
+        val discovered = placeDiscoveryTimes(listOf(pontNeuf, pontDesArts, pantheon), times)
+        assertEquals(2_000L, discovered["pont-neuf"])
+        assertEquals(9_000L, discovered["pantheon"])
+    }
+
+    @Test
     fun levels_follow_the_owner_order_and_thresholds() {
         assertEquals("Badaud", levelFor(0).level.title)
         assertEquals("Badaud", levelFor(499).level.title)

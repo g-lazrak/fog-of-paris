@@ -46,6 +46,7 @@ import com.glazrak.fogofparis.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -67,7 +68,12 @@ private const val INITIAL_ZOOM = 12.0
 private const val RECENTER_ZOOM = 15.5
 
 @Composable
-fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
+fun MapScreen(
+    viewModel: MapViewModel,
+    onOpenProgress: () -> Unit,
+    // Hauteur de la barre d'onglets posée sur le bas de la carte.
+    bottomBarHeight: Dp,
+) {
     val context = LocalContext.current
     val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
     val trackingStatus by viewModel.trackingStatus.collectAsStateWithLifecycle()
@@ -191,7 +197,7 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
         left = insets.getLeft(density, layoutDirection),
         top = insets.getTop(density),
         right = insets.getRight(density, layoutDirection),
-        bottom = insets.getBottom(density),
+        bottom = insets.getBottom(density) + with(density) { bottomBarHeight.roundToPx() },
     )
     val basePx = with(density) { ORNAMENT_MARGIN.roundToPx() }
     LaunchedEffect(map, insetsPx) {
@@ -203,7 +209,7 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
         summary?.let {
             SummaryBanner(
                 summary = it,
-                onClick = onOpenQuartiers,
+                onClick = onOpenProgress,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -218,7 +224,7 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
                 .align(Alignment.BottomEnd)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 // Au-dessus du bouton (i) des crédits de la carte.
-                .padding(end = 16.dp, bottom = 56.dp),
+                .padding(end = 16.dp, bottom = bottomBarHeight + 48.dp),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_my_location),
@@ -231,7 +237,7 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(bottom = 24.dp),
+                .padding(bottom = bottomBarHeight + 20.dp),
         ) {
             trackingStatus?.let { StatusLabel(it) }
             TrackingButton(isTracking = isTracking, onClick = onToggleTracking)
@@ -239,7 +245,7 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
     }
 }
 
-// Bandeau du haut ; un appui ouvre l'écran des quartiers.
+// Bandeau du haut ; un appui ouvre l'écran « Progrès ».
 @Composable
 private fun SummaryBanner(summary: GameSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(

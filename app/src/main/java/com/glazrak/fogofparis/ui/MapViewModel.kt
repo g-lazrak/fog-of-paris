@@ -10,12 +10,17 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.glazrak.fogofparis.data.ParisGeo
 import com.glazrak.fogofparis.data.ParisGeoCache
+import com.glazrak.fogofparis.data.SettingsStore
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
 import com.glazrak.fogofparis.domain.CollectionProgress
+import com.glazrak.fogofparis.domain.Level
 import com.glazrak.fogofparis.domain.LevelProgress
+import com.glazrak.fogofparis.domain.PlaceDirection
+import com.glazrak.fogofparis.domain.nearestUnvisited
+import com.glazrak.fogofparis.domain.placeDiscoveryTimes
 import com.glazrak.fogofparis.domain.Place
 import com.glazrak.fogofparis.domain.collectionProgress
 import com.glazrak.fogofparis.domain.levelFor
@@ -48,11 +53,14 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 
-// Résumé affiché en haut de la carte et de l'écran des quartiers.
+// Résumé affiché en haut de la carte et sur l'écran « Progrès ».
 data class GameSummary(
     val revealedCells: Int,
     val totalCells: Int,
     val points: Int,
+    val medalledQuartiers: Int,
+    val visitedPlaces: Int,
+    val totalPlaces: Int,
 ) {
     val percent: Double get() = if (totalCells == 0) 0.0 else revealedCells * 100.0 / totalCells
     val level: LevelProgress get() = levelFor(points)
@@ -69,7 +77,7 @@ sealed interface CameraMove {
     data class ToArea(val boundary: CityBoundary, override val requestId: Int) : CameraMove
 }
 
-// Données des deux écrans (carte et quartiers). Survit aux rotations d'écran,
+// Données de tous les écrans (carte, progrès, quartiers, collections). Survit aux rotations d'écran,
 // contrairement aux composables. Le GPS lui-même est géré par TrackingService.
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -129,9 +137,64 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 revealedCells = revealed,
                 totalCells = parisGeo.cells.totalCells,
                 points = totalPoints(revealed, progress, sets),
+                medalledQuartiers = progress.count { it.medal != null },
+                visitedPlaces = sets.sumOf { it.visitedCount },
+                totalPlaces = sets.sumOf { it.places.size },
             )
         }.flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Carte « Prochain lieu » : le lieu non visité le plus proche de la position connue.
+    val nearestPlace: StateFlow<PlaceDirection?> =
+        combine(currentPosition, collections) { position, sets ->
+            if (position == null) return@combine null
+            nearestUnvisited(
+                places = sets.flatMap { it.places },
+                visitedIds = sets.flatMapTo(HashSet()) { it.visitedIds },
+                from = position,
+            )
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Les 5 derniers lieux découverts, du plus récent au plus ancien.
+    val recentDiscoveries: StateFlow<List<Pair<Place, Long>>> =
+        combine(visits, geo.filterNotNull()) { list, parisGeo ->
+            val firstVisitByCell = list.associate { it.cell to it.firstVisitedAt }
+            val places = parisGeo.places.places.associateBy { it.id }
+            placeDiscoveryTimes(parisGeo.places.places, firstVisitByCell)
+                .entries.sortedByDescending { it.value }
+                .take(5)
+                .mapNotNull { (id, time) -> places[id]?.let { it to time } }
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val settings = SettingsStore(application)
+
+    val nearbyAlerts: StateFlow<Boolean> = settings.nearbyAlerts
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setNearbyAlerts(enabled: Boolean) {
+        viewModelScope.launch { settings.setNearbyAlerts(enabled) }
+    }
+
+    // Nouveau titre à fêter à l'écran, ou null. À la toute première ouverture,
+    // on enregistre le niveau actuel sans fête (rien n'a été « gagné » à l'instant).
+    val levelToCelebrate: StateFlow<Level?> =
+        combine(summary.filterNotNull(), settings.lastCelebratedLevel) { current, lastCelebrated ->
+            val level = current.level.level
+            when {
+                lastCelebrated == null -> {
+                    settings.setLastCelebratedLevel(level.number)
+                    null
+                }
+                level.number > lastCelebrated -> level
+                else -> null
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun dismissCelebration(level: Level) {
+        viewModelScope.launch { settings.setLastCelebratedLevel(level.number) }
+    }
 
     val weeklyHistory: StateFlow<List<WeekCount>> = visits
         .map { list -> weeklyHistory(list.map { it.firstVisitedAt }, LocalDate.now(), ZoneId.systemDefault()) }
@@ -174,6 +237,8 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun centerOnUserIfInParis() {
         if (!hasLocationPermission()) return
         val position = lastKnownPosition(getApplication()) ?: return
+        // Sert aussi à la carte « Prochain lieu » quand le suivi est arrêté.
+        if (!TrackingState.isTracking.value) oneShotPosition.value = position
         val paris = parisBoundary.filterNotNull().first()
         if (paris.contains(position)) {
             _cameraMove.value = CameraMove.ToPosition(position, nextRequestId())
@@ -191,6 +256,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             if (!TrackingState.isTracking.value) oneShotPosition.value = position
             _cameraMove.value = CameraMove.ToPosition(position, nextRequestId())
         }
+    }
+
+    fun showPlace(place: Place) {
+        _cameraMove.value = CameraMove.ToPosition(place.position, nextRequestId())
     }
 
     fun showQuartier(quartier: Quartier) {

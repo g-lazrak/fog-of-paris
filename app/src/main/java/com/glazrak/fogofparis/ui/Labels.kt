@@ -1,10 +1,15 @@
 package com.glazrak.fogofparis.ui
 
 import android.content.Context
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.Color
 import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.domain.Cardinal
+import com.glazrak.fogofparis.domain.CollectionSet
 import com.glazrak.fogofparis.domain.Medal
+import com.glazrak.fogofparis.ui.theme.Night
 import java.util.Locale
+import kotlin.math.roundToInt
 
 fun Medal.label(context: Context): String = context.getString(
     when (this) {
@@ -15,14 +20,55 @@ fun Medal.label(context: Context): String = context.getString(
     }
 )
 
-// Couleur de chaque médaille (barres de progression, pastilles).
+// Couleur de chaque médaille (mosaïque, barres), sur fond nuit.
 val Medal.color: Color
     get() = when (this) {
-        Medal.BRONZE -> Color(0xFFCD7F32)
-        Medal.SILVER -> Color(0xFF9EA4AA)
-        Medal.GOLD -> Color(0xFFE0A800)
-        Medal.MASTERED -> Color(0xFF7E57C2) // violet : distinct des trois métaux
+        Medal.BRONZE -> Color(0xFFC98546)
+        Medal.SILVER -> Color(0xFFB7BDC6)
+        Medal.GOLD -> Night.Gold
+        Medal.MASTERED -> Color(0xFF9C7BE0) // violet : distinct des trois métaux
     }
+
+@get:DrawableRes
+val CollectionSet.icon: Int
+    get() = when (this) {
+        CollectionSet.BRIDGES -> R.drawable.ic_set_bridges
+        CollectionSet.TOWNHALLS -> R.drawable.ic_set_townhalls
+        CollectionSet.PASSAGES -> R.drawable.ic_set_passages
+        CollectionSet.MONUMENTS -> R.drawable.ic_set_monuments
+        CollectionSet.PARKS -> R.drawable.ic_set_parks
+        CollectionSet.SQUARES -> R.drawable.ic_set_squares
+        CollectionSet.STATIONS -> R.drawable.ic_set_stations
+    }
+
+val CollectionSet.color: Color
+    get() = when (this) {
+        CollectionSet.BRIDGES -> Night.Periwinkle
+        CollectionSet.TOWNHALLS -> Night.Gold
+        CollectionSet.PASSAGES -> Night.Orchid
+        CollectionSet.MONUMENTS -> Night.Coral
+        CollectionSet.PARKS -> Night.Teal
+        CollectionSet.SQUARES -> Color(0xFFB7BDC6)
+        CollectionSet.STATIONS -> Color(0xFFE8A05C)
+    }
+
+fun Cardinal.label(context: Context): String = context.getString(
+    when (this) {
+        Cardinal.N -> R.string.cardinal_n
+        Cardinal.NE -> R.string.cardinal_ne
+        Cardinal.E -> R.string.cardinal_e
+        Cardinal.SE -> R.string.cardinal_se
+        Cardinal.S -> R.string.cardinal_s
+        Cardinal.SW -> R.string.cardinal_sw
+        Cardinal.W -> R.string.cardinal_w
+        Cardinal.NW -> R.string.cardinal_nw
+    }
+)
+
+// "650 m" ou "1,4 km".
+fun formatDistance(meters: Double): String =
+    if (meters < 1000) "${(meters / 10).roundToInt() * 10} m"
+    else String.format(Locale.FRANCE, "%.1f km", meters / 1000)
 
 val Medal.emoji: String
     get() = when (this) {

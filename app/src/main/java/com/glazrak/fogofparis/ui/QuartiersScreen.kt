@@ -1,307 +1,265 @@
 package com.glazrak.fogofparis.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glazrak.fogofparis.R
-import com.glazrak.fogofparis.domain.CollectionProgress
-import com.glazrak.fogofparis.domain.CollectionSet
-import com.glazrak.fogofparis.domain.LevelProgress
+import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.Medal
-import com.glazrak.fogofparis.tracking.collectionNameRes
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
-import com.glazrak.fogofparis.domain.WeekCount
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import com.glazrak.fogofparis.domain.cellsNeededFor
+import com.glazrak.fogofparis.ui.theme.Night
+import kotlin.math.PI
+import kotlin.math.cos
 
-private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.FRANCE)
-
-// Écran "Quartiers" : score, historique, et progression des 80 quartiers
-// rangés par arrondissement. Un appui sur un quartier le montre sur la carte.
+// Écran « Quartiers » : la mosaïque des 80 quartiers, colorés par médaille.
 @Composable
-fun QuartiersScreen(
-    viewModel: MapViewModel,
-    onBack: () -> Unit,
-    onQuartierSelected: (Quartier) -> Unit,
-) {
-    val summary by viewModel.summary.collectAsStateWithLifecycle()
+fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit) {
     val progress by viewModel.quartierProgress.collectAsStateWithLifecycle()
-    val history by viewModel.weeklyHistory.collectAsStateWithLifecycle()
-    val collections by viewModel.collections.collectAsStateWithLifecycle()
-    val byArrondissement = progress.groupBy { it.quartier.arrondissement }.toSortedMap()
+    if (progress.isEmpty()) return
+    // Par défaut, le quartier le plus avancé : c'est lui qu'on a envie de regarder.
+    var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val selected = progress.firstOrNull { it.quartier.id == selectedId } ?: progress.maxBy { it.percent }
+    val medalCounts = Medal.entries.associateWith { medal -> progress.count { it.medal == medal } }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(4.dp)) {
-                IconButton(onClick = onBack) {
-                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
-                }
-                Text(stringResource(R.string.quartiers_title), style = MaterialTheme.typography.titleLarge)
-            }
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                item {
-                    summary?.let {
-                        SummaryCard(it, progress)
-                        LevelCard(it.level)
-                    }
-                    CollectionsSection(collections)
-                    HistoryChart(history)
-                }
-                byArrondissement.forEach { (arrondissement, quartiers) ->
-                    item(key = "header-$arrondissement") { ArrondissementHeader(arrondissement) }
-                    items(quartiers, key = { it.quartier.id }) { quartierProgress ->
-                        QuartierRow(quartierProgress, onClick = { onQuartierSelected(quartierProgress.quartier) })
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryCard(summary: GameSummary, progress: List<QuartierProgress>) {
-    // Nombre de quartiers ayant atteint au moins chaque médaille.
-    val medalCounts = Medal.entries.associateWith { medal -> progress.count { medal in it.medalDates } }
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(
-            stringResource(R.string.summary_percent, formatPercent(summary.percent)),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        Text(
-            stringResource(R.string.summary_points, formatPoints(summary.points)),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Medal.entries.forEach { medal ->
-                // Pastille teintée de la couleur de la médaille.
-                Surface(shape = RoundedCornerShape(50), color = medal.color.copy(alpha = 0.18f)) {
-                    Text(
-                        "${medal.emoji} ${medalCounts[medal]}",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// Titre actuel et avancement vers le suivant.
-@Composable
-private fun LevelCard(progress: LevelProgress) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                stringResource(R.string.level_number, progress.level.number),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(progress.level.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(6.dp))
-        LinearProgressIndicator(
-            progress = { progress.fractionToNext },
-            color = LEVEL_COLOR,
-            trackColor = LEVEL_COLOR.copy(alpha = 0.18f),
-            strokeCap = StrokeCap.Round,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-            modifier = Modifier.fillMaxWidth().height(8.dp),
-        )
-        progress.next?.let { next ->
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(R.string.level_next, formatPoints(next.minPoints - progress.points), next.title),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CollectionsSection(collections: List<CollectionProgress>) {
-    if (collections.isEmpty()) return
-    var expanded by remember { mutableStateOf<CollectionSet?>(null) }
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            stringResource(R.string.collections_title),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        collections.forEach { collection ->
-            val color = if (collection.isComplete) Medal.GOLD.color else COLLECTION_COLOR
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = if (expanded == collection.set) null else collection.set }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(collection.set.emoji, modifier = Modifier.padding(end = 8.dp))
-                    Text(
-                        stringResource(collectionNameRes(collection.set)),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        "${collection.visitedCount} / ${collection.places.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = color,
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { collection.visitedCount.toFloat() / collection.places.size },
-                    color = color,
-                    trackColor = color.copy(alpha = 0.18f),
-                    strokeCap = StrokeCap.Round,
-                    gapSize = 0.dp,
-                    drawStopIndicator = {},
-                    modifier = Modifier.fillMaxWidth().height(6.dp),
-                )
-                if (expanded == collection.set) {
-                    Spacer(Modifier.height(6.dp))
-                    // Lieux visités d'abord, puis les autres par ordre alphabétique.
-                    collection.places
-                        .sortedWith(compareBy({ it.id !in collection.visitedIds }, { it.name }))
-                        .forEach { place ->
-                            val visited = place.id in collection.visitedIds
-                            Text(
-                                (if (visited) "✓  " else "○  ") + place.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (visited) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 2.dp),
-                            )
-                        }
-                }
-            }
-        }
-    }
-}
-
-private val LEVEL_COLOR = Color(0xFF3F51B5)
-private val COLLECTION_COLOR = Color(0xFF26A69A)
-
-// Petites barres : cellules révélées chacune des 8 dernières semaines.
-@Composable
-private fun HistoryChart(history: List<WeekCount>) {
-    if (history.isEmpty()) return
-    val max = history.maxOf { it.revealedCells }.coerceAtLeast(1)
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(stringResource(R.string.history_title), style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(8.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.fillMaxWidth().height(96.dp),
-        ) {
-            history.forEach { week ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                ) {
-                    Text("${week.revealedCells}", style = MaterialTheme.typography.labelSmall)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            // Hauteur minimale pour qu'une semaine vide reste visible.
-                            .height((56 * week.revealedCells / max).coerceAtLeast(2).dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)),
-                    )
-                    Text(week.weekStart.format(DAY_MONTH), style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArrondissementHeader(arrondissement: Int) {
-    Column {
-        HorizontalDivider()
-        Text(
-            arrondissementLabel(LocalContext.current, arrondissement),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
-        )
-    }
-}
-
-@Composable
-private fun QuartierRow(progress: QuartierProgress, onClick: () -> Unit) {
-    // La couleur de la barre dit la médaille ; gris tant qu'il n'y en a pas.
-    val barColor = progress.medal?.color ?: MaterialTheme.colorScheme.outline
     Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Night.Background)
+            .verticalScroll(rememberScrollState())
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
+    ) {
+        ScreenHeader(
+            title = stringResource(R.string.quartiers_title),
+            subtitle = stringResource(R.string.quartiers_subtitle, progress.count { it.medal != null }, progress.size),
+        )
+        NightCard(padding = 12.dp) {
+            Mosaic(progress, selected.quartier.id, onSelect = { selectedId = it.id })
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val context = LocalContext.current
+                Medal.entries.forEach { medal -> LegendItem(medal.color, "${medal.label(context)} ${medalCounts[medal]}") }
+                LegendItem(Night.Started, stringResource(R.string.legend_started))
+            }
+        }
+        SelectedQuartierCard(selected, onShow = { onShowQuartier(selected.quartier) })
+        SectionLabel(stringResource(R.string.by_arrondissement))
+        progress.groupBy { it.quartier.arrondissement }.toSortedMap().forEach { (arrondissement, quartiers) ->
+            ArrondissementRow(arrondissement, quartiers.sortedBy { it.quartier.id }, selected.quartier.id, onSelect = { selectedId = it })
+        }
+    }
+}
+
+fun fillFor(progress: QuartierProgress): Color =
+    progress.medal?.color ?: if (progress.revealedCells > 0) Night.Started else Night.Unexplored
+
+// Dessin des quartiers dans leurs vraies formes. Un appui choisit le quartier touché.
+@Composable
+private fun Mosaic(progress: List<QuartierProgress>, selectedId: Int, onSelect: (Quartier) -> Unit) {
+    val quartiers = progress.map { it.quartier }
+    val bounds = remember(quartiers) { MosaicBounds.of(quartiers) }
+    val description = stringResource(R.string.mosaic_description)
+    Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .aspectRatio(bounds.aspectRatio)
+            .semantics { contentDescription = description }
+            .pointerInput(quartiers) {
+                detectTapGestures { tap ->
+                    val position = bounds.toGeo(tap, size.width.toFloat())
+                    quartiers.firstOrNull { it.boundary.contains(position) }?.let(onSelect)
+                }
+            },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(progress.quartier.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(
-                stringResource(R.string.quartier_percent, formatPercent(progress.percent)),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (progress.medal != null) barColor else MaterialTheme.colorScheme.onSurfaceVariant,
+        val width = size.width
+        // Le quartier choisi est dessiné en dernier, pour que son contour blanc passe dessus.
+        val ordered = progress.sortedBy { it.quartier.id == selectedId }
+        ordered.forEach { item ->
+            val path = Path()
+            item.quartier.boundary.rings.forEach { ring ->
+                ring.points.forEachIndexed { i, point ->
+                    val offset = bounds.toScreen(point, width)
+                    if (i == 0) path.moveTo(offset.x, offset.y) else path.lineTo(offset.x, offset.y)
+                }
+                path.close()
+            }
+            drawPath(path, fillFor(item), style = Fill)
+            val isSelected = item.quartier.id == selectedId
+            drawPath(
+                path,
+                if (isSelected) Color.White else Night.Background,
+                style = Stroke(width = if (isSelected) 2.dp.toPx() else 0.8.dp.toPx()),
             )
         }
-        Spacer(Modifier.height(6.dp))
-        // La barre est pleine à 75 % (médaille "Maîtrisé"), le maximum réaliste.
-        LinearProgressIndicator(
-            progress = { (progress.percent / Medal.MASTERED.thresholdPercent).toFloat().coerceIn(0f, 1f) },
-            color = barColor,
-            trackColor = barColor.copy(alpha = 0.18f),
-            strokeCap = StrokeCap.Round,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-            modifier = Modifier.fillMaxWidth().height(6.dp),
+    }
+}
+
+// Projection équirectangulaire des quartiers dans un rectangle d'écran.
+private class MosaicBounds(val west: Double, val east: Double, val south: Double, val north: Double) {
+    private val cosLat = cos((south + north) / 2 * PI / 180)
+    val aspectRatio: Float get() = ((east - west) * cosLat / (north - south)).toFloat()
+
+    fun toScreen(point: GeoPosition, width: Float): Offset {
+        val scale = width / ((east - west) * cosLat)
+        return Offset(
+            x = ((point.lon - west) * cosLat * scale).toFloat(),
+            y = ((north - point.lat) * scale).toFloat(),
         )
+    }
+
+    fun toGeo(offset: Offset, width: Float): GeoPosition {
+        val scale = width / ((east - west) * cosLat)
+        return GeoPosition(lat = north - offset.y / scale, lon = west + offset.x / scale / cosLat)
+    }
+
+    companion object {
+        fun of(quartiers: List<Quartier>): MosaicBounds {
+            val points = quartiers.flatMap { q -> q.boundary.rings.flatMap { it.points } }
+            return MosaicBounds(
+                west = points.minOf { it.lon }, east = points.maxOf { it.lon },
+                south = points.minOf { it.lat }, north = points.maxOf { it.lat },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectedQuartierCard(progress: QuartierProgress, onShow: () -> Unit) {
+    val context = LocalContext.current
+    val medal = progress.medal
+    val accent = medal?.color ?: Night.TextMuted
+    val next = Medal.entries.firstOrNull { it !in progress.medalDates }
+    NightCard(highlight = medal?.color) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                SectionLabel(arrondissementLabel(context, progress.quartier.arrondissement))
+                Text(progress.quartier.name, style = MaterialTheme.typography.headlineSmall, color = Night.Text)
+            }
+            if (medal != null) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(52.dp).clip(CircleShape).background(medal.color),
+                ) {
+                    Icon(painterResource(R.drawable.ic_medal), contentDescription = medal.label(context), tint = Night.GoldInk)
+                }
+            }
+        }
+        Row {
+            Text(
+                when {
+                    next == null -> stringResource(R.string.quartier_all_medals)
+                    medal == null -> stringResource(
+                        R.string.quartier_to_first_medal,
+                        cellsNeededFor(next, progress.totalCells) - progress.revealedCells, next.label(context),
+                    )
+                    else -> stringResource(
+                        R.string.quartier_to_next_medal, medal.label(context),
+                        cellsNeededFor(next, progress.totalCells) - progress.revealedCells, next.label(context),
+                    )
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = Night.TextSoft,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                stringResource(R.string.quartier_percent, formatPercent(progress.percent)),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (medal != null) accent else Night.Text,
+            )
+        }
+        // Barre pleine à 75 % : la médaille « Maîtrisé », le maximum réaliste.
+        NightProgressBar((progress.percent / Medal.MASTERED.thresholdPercent).toFloat(), medal?.color ?: Night.Started, height = 8.dp)
+        Button(
+            onClick = onShow,
+            colors = ButtonDefaults.buttonColors(containerColor = Night.Text, contentColor = Night.Background),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+        ) {
+            Icon(painterResource(R.drawable.ic_tab_map), contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(stringResource(R.string.show_on_map), modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+// Une ligne par arrondissement : ses 4 quartiers en petites barres colorées.
+@Composable
+private fun ArrondissementRow(arrondissement: Int, quartiers: List<QuartierProgress>, selectedId: Int, onSelect: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            if (arrondissement == 1) "1er" else "${arrondissement}e",
+            style = MaterialTheme.typography.titleMedium,
+            color = Night.Text,
+            modifier = Modifier.width(40.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+            quartiers.forEach { quartier ->
+                val isSelected = quartier.quartier.id == selectedId
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(28.dp)
+                        .clickable { onSelect(quartier.quartier.id) },
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(if (isSelected) 12.dp else 8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(fillFor(quartier)),
+                    )
+                }
+            }
+        }
     }
 }
