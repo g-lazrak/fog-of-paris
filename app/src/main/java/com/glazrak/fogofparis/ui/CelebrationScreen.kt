@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -49,12 +50,20 @@ import androidx.compose.ui.unit.dp
 import com.glazrak.fogofparis.R
 import com.glazrak.fogofparis.domain.LEVELS
 import com.glazrak.fogofparis.domain.Level
+import com.glazrak.fogofparis.ui.theme.DarkPalette
+import com.glazrak.fogofparis.ui.theme.LocalPalette
 import com.glazrak.fogofparis.ui.theme.Night
 import kotlin.random.Random
 
 // Écran de fête quand un nouveau titre est atteint (affiché à l'ouverture de l'app).
 @Composable
 fun CelebrationScreen(level: Level, onContinue: () -> Unit) {
+    // Toujours de nuit, même avec les menus clairs : la médaille dorée brille mieux sur fond sombre.
+    CompositionLocalProvider(LocalPalette provides DarkPalette) { Celebration(level, onContinue) }
+}
+
+@Composable
+private fun Celebration(level: Level, onContinue: () -> Unit) {
     BackHandler(onBack = onContinue)
     val next = LEVELS.getOrNull(level.number)
     // Le médaillon arrive en « rebondissant » pour marquer le moment.
@@ -123,6 +132,7 @@ fun CelebrationScreen(level: Level, onContinue: () -> Unit) {
 // Confettis qui tombent doucement en boucle derrière le médaillon.
 @Composable
 private fun Confetti() {
+    val gold = Night.Gold
     val colors = listOf(Night.Gold, Night.Periwinkle, Night.Teal, Night.Coral, Night.Orchid, Night.Text)
     val pieces = remember { List(28) { ConfettiPiece(Random.nextFloat(), Random.nextFloat(), colors.random(), Random.nextFloat() * 360f) } }
     val fall by rememberInfiniteTransition(label = "confetti").animateFloat(
@@ -133,7 +143,7 @@ private fun Confetti() {
     )
     Canvas(Modifier.fillMaxSize()) {
         drawCircle(
-            Brush.radialGradient(listOf(Night.Gold.copy(alpha = 0.25f), Color.Transparent), radius = size.width * 0.7f),
+            Brush.radialGradient(listOf(gold.copy(alpha = 0.25f), Color.Transparent), radius = size.width * 0.7f),
             radius = size.width * 0.7f,
             center = Offset(size.width / 2, size.height * 0.4f),
         )

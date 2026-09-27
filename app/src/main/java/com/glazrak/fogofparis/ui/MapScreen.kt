@@ -1,9 +1,6 @@
 package com.glazrak.fogofparis.ui
 
 import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import android.view.Gravity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -24,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
@@ -51,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.tracking.isGranted
 import com.glazrak.fogofparis.ui.theme.Night
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -58,7 +55,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -84,31 +80,10 @@ fun MapScreen(
     bottomBarHeight: Dp,
 ) {
     val context = LocalContext.current
-    val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
     val trackingStatus by viewModel.trackingStatus.collectAsStateWithLifecycle()
-
-    // Android affiche les demandes l'une après l'autre (position, activité, notifications).
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        // Sans position précise ou sans détection d'activité, rien ne serait jamais révélé.
-        // Sans notifications, le suivi marche quand même, la notification est juste masquée.
-        when {
-            !isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION) ->
-                Toast.makeText(context, R.string.precise_location_needed, Toast.LENGTH_LONG).show()
-            !hasActivityRecognition(context) ->
-                Toast.makeText(context, R.string.activity_permission_needed, Toast.LENGTH_LONG).show()
-            else -> viewModel.startTracking()
-        }
-    }
-    val onToggleTracking = {
-        if (isTracking) {
-            viewModel.stopTracking()
-        } else {
-            val missing = requiredPermissions().filterNot { isGranted(context, it) }
-            if (missing.isEmpty()) viewModel.startTracking() else permissionLauncher.launch(missing.toTypedArray())
-        }
-    }
+    // Le suivi reste allumé en permanence ; on ne l'éteint que dans les réglages
+    // ou la notification. Ici, seulement de quoi le rallumer.
+    val onStartTracking = rememberTrackingStarter(viewModel)
 
     // "Me recentrer" : demande seulement la position (pas les autres permissions du suivi).
     val recenterPermissionLauncher = rememberLauncherForActivityResult(
@@ -290,8 +265,7 @@ fun MapScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(bottom = bottomBarHeight + 20.dp),
         ) {
-            trackingStatus?.let { StatusLabel(it) }
-            TrackingButton(isTracking = isTracking, onClick = onToggleTracking)
+            StatusLabel(trackingStatus, onStartTracking)
         }
     }
 }
@@ -331,10 +305,12 @@ private fun SummaryBanner(summary: GameSummary, onClick: () -> Unit, modifier: M
     }
 }
 
+// Pastille d'état du suivi. Suivi arrêté (status null) : un appui le rallume.
 @Composable
-private fun StatusLabel(status: TrackingStatus) {
+private fun StatusLabel(status: TrackingStatus?, onStartTracking: () -> Unit) {
     val text = stringResource(
         when (status) {
+            null -> R.string.status_stopped
             TrackingStatus.REVEALING -> R.string.status_revealing
             TrackingStatus.SEARCHING_GPS -> R.string.status_searching_gps
             TrackingStatus.WAITING_DETECTION -> R.string.status_waiting_detection
@@ -343,9 +319,15 @@ private fun StatusLabel(status: TrackingStatus) {
             TrackingStatus.PAUSED_BICYCLE -> R.string.status_paused_bicycle
         }
     )
-    // Vert uniquement quand des cases peuvent se révéler, gris sinon.
-    val dotColor = if (status == TrackingStatus.REVEALING) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+    // Vert quand des cases peuvent se révéler, rouge si le suivi est éteint, gris sinon.
+    val dotColor = when (status) {
+        TrackingStatus.REVEALING -> Color(0xFF4CAF50)
+        null -> Night.Coral
+        else -> Color(0xFF9E9E9E)
+    }
     Surface(
+        onClick = onStartTracking,
+        enabled = status == null,
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -364,39 +346,6 @@ private fun StatusLabel(status: TrackingStatus) {
         }
     }
 }
-
-@Composable
-private fun TrackingButton(isTracking: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        icon = {
-            Icon(
-                painter = painterResource(R.drawable.ic_notification_walk),
-                contentDescription = null,
-            )
-        },
-        text = { Text(stringResource(if (isTracking) R.string.tracking_stop else R.string.tracking_start)) },
-        containerColor = if (isTracking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        contentColor = if (isTracking) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-        modifier = modifier,
-    )
-}
-
-// Activité physique : à demander depuis Android 10 ; notifications : depuis Android 13.
-// Avant, ces permissions sont accordées à l'installation.
-private fun requiredPermissions(): List<String> = buildList {
-    add(Manifest.permission.ACCESS_FINE_LOCATION)
-    add(Manifest.permission.ACCESS_COARSE_LOCATION)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(Manifest.permission.ACTIVITY_RECOGNITION)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
-}
-
-private fun hasActivityRecognition(context: Context): Boolean =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-        isGranted(context, Manifest.permission.ACTIVITY_RECOGNITION)
-
-private fun isGranted(context: Context, permission: String): Boolean =
-    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
 private val ORNAMENT_MARGIN = 8.dp
 
@@ -557,13 +506,25 @@ private fun warmthLabel(warmth: Warmth): Int = when (warmth) {
     Warmth.COLD -> R.string.warmth_cold
 }
 
-// Du bleu (froid) au rouge (brûlant) : se lit d'un coup d'œil.
-private fun warmthColor(warmth: Warmth): Color = when (warmth) {
-    Warmth.BURNING -> Color(0xFFFF5A36)
-    Warmth.VERY_HOT -> Color(0xFFFF8A3D)
-    Warmth.HOT -> Color(0xFFF2B33D)
-    Warmth.WARM -> Color(0xFFE6D27A)
-    Warmth.COLD -> Color(0xFF8FB8FF)
+// Du bleu (froid) au rouge (brûlant) : se lit d'un coup d'œil. Teintes plus
+// soutenues sur le bandeau clair, sinon le jaune « tiède » disparaît.
+@Composable
+private fun warmthColor(warmth: Warmth): Color = if (Night.isDark) {
+    when (warmth) {
+        Warmth.BURNING -> Color(0xFFFF5A36)
+        Warmth.VERY_HOT -> Color(0xFFFF8A3D)
+        Warmth.HOT -> Color(0xFFF2B33D)
+        Warmth.WARM -> Color(0xFFE6D27A)
+        Warmth.COLD -> Color(0xFF8FB8FF)
+    }
+} else {
+    when (warmth) {
+        Warmth.BURNING -> Color(0xFFD63A17)
+        Warmth.VERY_HOT -> Color(0xFFD9641A)
+        Warmth.HOT -> Color(0xFFC08410)
+        Warmth.WARM -> Color(0xFF9C8A2E)
+        Warmth.COLD -> Color(0xFF3F6FD1)
+    }
 }
 
 private fun trendLabel(trend: Trend): Int? = when (trend) {

@@ -69,7 +69,16 @@ class TrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> stopTracking()
+            // Arrêt voulu (notification ou réglages) : on le retient, pour ne pas
+            // relancer le suivi à la prochaine ouverture de l'app.
+            ACTION_STOP -> scope.launch {
+                try {
+                    SettingsStore(this@TrackingService).setTrackingEnabled(false)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not save tracking setting", e)
+                }
+                stopTracking()
+            }
             else -> startTracking()
         }
         // Pas de redémarrage automatique par Android : sans la permission

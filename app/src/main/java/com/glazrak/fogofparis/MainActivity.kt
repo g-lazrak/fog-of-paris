@@ -17,6 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.compose.LocalActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.glazrak.fogofparis.data.MenuTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -45,19 +51,33 @@ import com.glazrak.fogofparis.ui.theme.FogOfParisTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Tout est sombre (carte, brouillard, menus) : icônes claires dans les
-        // barres système, en permanence.
+        // Icônes claires au démarrage (la carte et son brouillard sont sombres) ;
+        // SystemBarIcons les adapte ensuite au thème des menus.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
         setContent {
-            FogOfParisTheme {
-                val viewModel: MapViewModel = viewModel()
+            val viewModel: MapViewModel = viewModel()
+            val menuTheme by viewModel.menuTheme.collectAsStateWithLifecycle()
+            val darkMenus = when (menuTheme) {
+                MenuTheme.DARK -> true
+                MenuTheme.LIGHT -> false
+                MenuTheme.SYSTEM -> isSystemInDarkTheme()
+            }
+            // Le suivi reste allumé : à chaque ouverture, on le relance s'il s'est arrêté.
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resumeTrackingIfWanted() }
+            FogOfParisTheme(dark = darkMenus) {
                 var tab by rememberSaveable { mutableStateOf(AppTab.MAP) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 val levelToCelebrate by viewModel.levelToCelebrate.collectAsStateWithLifecycle()
+                SystemBarIcons(
+                    // La carte (brouillard sombre) et la fête sont sombres quel que soit le thème.
+                    lightStatusIcons = darkMenus || (tab == AppTab.MAP && !showSettings) || levelToCelebrate != null,
+                    // En bas, c'est toujours la barre d'onglets, aux couleurs des menus.
+                    lightNavigationIcons = darkMenus || levelToCelebrate != null,
+                )
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
                 // Chasse au trésor : seulement depuis le quartier du trésor ; sinon, on dit où aller.
@@ -149,3 +169,19 @@ private fun TabBarSpacer() {
     Spacer(Modifier.fillMaxWidth().height(TAB_BAR_HEIGHT))
     Spacer(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
 }
+
+// Icônes claires (heure, batterie…) sur fond sombre, foncées sur fond clair.
+@Composable
+private fun SystemBarIcons(lightStatusIcons: Boolean, lightNavigationIcons: Boolean) {
+    val activity = LocalActivity.current as? ComponentActivity ?: return
+    DisposableEffect(activity, lightStatusIcons, lightNavigationIcons) {
+        activity.enableEdgeToEdge(
+            statusBarStyle = barStyle(lightStatusIcons),
+            navigationBarStyle = barStyle(lightNavigationIcons),
+        )
+        onDispose { }
+    }
+}
+
+private fun barStyle(lightIcons: Boolean): SystemBarStyle =
+    if (lightIcons) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)

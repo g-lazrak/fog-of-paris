@@ -163,14 +163,15 @@ private fun HeroCard(summary: GameSummary) {
 // Anneau qui se remplit vers le titre suivant, le titre actuel au centre.
 @Composable
 private fun LevelRing(level: LevelProgress) {
+    val palette = Night
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp)) {
         Canvas(modifier = Modifier.size(128.dp)) {
             val stroke = 10.dp.toPx()
             val inset = stroke / 2
             val arcSize = Size(size.width - stroke, size.height - stroke)
-            drawArc(Night.Border, 0f, 360f, useCenter = false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke))
+            drawArc(palette.Border, 0f, 360f, useCenter = false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke))
             drawArc(
-                Night.Gold, -90f, 360f * level.fractionToNext, useCenter = false,
+                palette.Gold, -90f, 360f * level.fractionToNext, useCenter = false,
                 topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round),
             )
         }

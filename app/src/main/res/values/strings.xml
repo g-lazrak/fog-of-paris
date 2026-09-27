@@ -4,8 +4,13 @@
     <string name="tracking_notification_title">Paris se dévoile</string>
     <string name="tracking_notification_text">Le GPS ne s\'allume que quand vous marchez. Votre position reste sur votre téléphone.</string>
     <string name="tracking_notification_stop">Arrêter</string>
-    <string name="tracking_start">Démarrer le suivi</string>
-    <string name="tracking_stop">Arrêter le suivi</string>
+    <string name="status_stopped">Suivi arrêté · toucher pour l\'activer</string>
+    <string name="tracking_setting_title">Suivi de la marche</string>
+    <string name="tracking_setting_text">Laissez-le allumé : le GPS ne s\'allume que quand vous marchez, et le suivi se relance tout seul à l\'ouverture de l\'app. Éteint, plus rien ne se dévoile.</string>
+    <string name="menu_theme_title">Thème des menus</string>
+    <string name="menu_theme_dark">Sombre</string>
+    <string name="menu_theme_light">Clair</string>
+    <string name="menu_theme_system">Comme le téléphone</string>
     <string name="precise_location_needed">La position précise est nécessaire pour révéler des carrés de 50 m.</string>
     <string name="activity_permission_needed">L\'accès à l\'activité physique est nécessaire pour distinguer la marche des transports.</string>
     <string name="status_revealing">Révélation en cours</string>
@@ -137,9 +142,9 @@
     <string name="hunt_found">💎 Trouvé : %1$s</string>
     <string name="hunt_stop">Arrêter la chasse</string>
     <string name="hunt_give_up">Donner sa langue au chat</string>
-    <string name="hunt_needs_tracking">Démarrez le suivi pour savoir si vous chauffez en marchant.</string>
+    <string name="hunt_needs_tracking">Activez le suivi pour savoir si vous chauffez en marchant.</string>
     <string name="hunt_wrong_quartier">Ce trésor se cache dans le quartier %1$s : rendez-vous-y pour lancer la chasse.</string>
-    <string name="hunt_no_position">Position inconnue : démarrez le suivi pour lancer la chasse.</string>
+    <string name="hunt_no_position">Position inconnue : activez le suivi pour lancer la chasse.</string>
     <string name="hunt_start_hint">Toucher pour chercher ce trésor</string>
     <string name="warmth_burning">Brûlant !</string>
     <string name="warmth_very_hot">Très chaud</string>

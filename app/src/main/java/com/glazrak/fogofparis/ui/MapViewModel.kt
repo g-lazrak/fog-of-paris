@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.glazrak.fogofparis.data.ParisGeo
 import com.glazrak.fogofparis.data.ParisGeoCache
+import com.glazrak.fogofparis.data.MenuTheme
 import com.glazrak.fogofparis.data.SettingsStore
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
@@ -53,6 +54,7 @@ import com.glazrak.fogofparis.domain.trackingStatus
 import com.glazrak.fogofparis.domain.weeklyHistory
 import com.glazrak.fogofparis.tracking.TrackingService
 import com.glazrak.fogofparis.tracking.TrackingState
+import com.glazrak.fogofparis.tracking.canTrack
 import com.glazrak.fogofparis.tracking.lastKnownPosition
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -440,9 +442,31 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     ) == PackageManager.PERMISSION_GRANTED
 
     // À appeler une fois les permissions accordées.
-    fun startTracking() = TrackingService.start(getApplication())
+    fun startTracking() {
+        TrackingService.start(getApplication())
+        viewModelScope.launch { settings.setTrackingEnabled(true) }
+    }
 
+    // Le service retient lui-même l'arrêt (il vient aussi de la notification).
     fun stopTracking() = TrackingService.stop(getApplication())
+
+    // À chaque retour dans l'app : relance le suivi s'il doit tourner et s'est
+    // arrêté (redémarrage du téléphone, app fermée par Android). Sans la permission
+    // « toujours », seule l'app visible a le droit de le lancer.
+    fun resumeTrackingIfWanted() {
+        viewModelScope.launch {
+            val wanted = settings.trackingEnabled.first() != false
+            if (wanted && !TrackingState.isTracking.value && canTrack(getApplication())) startTracking()
+        }
+    }
+
+    // Menus sombres par défaut ; la carte a son propre réglage (mapLook).
+    val menuTheme: StateFlow<MenuTheme> = settings.menuTheme
+        .stateIn(viewModelScope, SharingStarted.Eagerly, MenuTheme.DARK)
+
+    fun setMenuTheme(theme: MenuTheme) {
+        viewModelScope.launch { settings.setMenuTheme(theme) }
+    }
 
     private companion object {
         const val TAG = "MapViewModel"

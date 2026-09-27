@@ -2,12 +2,15 @@ package com.glazrak.fogofparis.ui
 
 import android.content.Context
 import androidx.annotation.DrawableRes
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import com.glazrak.fogofparis.R
 import com.glazrak.fogofparis.domain.Cardinal
 import com.glazrak.fogofparis.domain.CollectionSet
 import com.glazrak.fogofparis.domain.Medal
 import com.glazrak.fogofparis.ui.theme.Night
+import com.glazrak.fogofparis.ui.theme.Palette
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -20,14 +23,16 @@ fun Medal.label(context: Context): String = context.getString(
     }
 )
 
-// Couleur de chaque médaille (mosaïque, barres), sur fond nuit.
+// Couleur de chaque médaille (mosaïque, barres), selon la palette des menus.
 val Medal.color: Color
-    get() = when (this) {
-        Medal.BRONZE -> Color(0xFFC98546)
-        Medal.SILVER -> Color(0xFFB7BDC6)
-        Medal.GOLD -> Night.Gold
-        Medal.MASTERED -> Color(0xFF9C7BE0) // violet : distinct des trois métaux
-    }
+    @Composable @ReadOnlyComposable get() = colorIn(Night)
+
+fun Medal.colorIn(palette: Palette): Color = when (this) {
+    Medal.BRONZE -> palette.Bronze
+    Medal.SILVER -> palette.Silver
+    Medal.GOLD -> palette.Gold
+    Medal.MASTERED -> palette.Violet // violet : distinct des trois métaux
+}
 
 @get:DrawableRes
 val CollectionSet.icon: Int
@@ -43,15 +48,15 @@ val CollectionSet.icon: Int
     }
 
 val CollectionSet.color: Color
-    get() = when (this) {
+    @Composable @ReadOnlyComposable get() = when (this) {
         CollectionSet.BRIDGES -> Night.Periwinkle
         CollectionSet.TOWNHALLS -> Night.Gold
         CollectionSet.PASSAGES -> Night.Orchid
         CollectionSet.MONUMENTS -> Night.Coral
         CollectionSet.PARKS -> Night.Teal
-        CollectionSet.SQUARES -> Color(0xFFB7BDC6)
-        CollectionSet.STATIONS -> Color(0xFFE8A05C)
-        CollectionSet.TREASURES -> Color(0xFF7FD6E8) // bleu diamant
+        CollectionSet.SQUARES -> Night.Silver
+        CollectionSet.STATIONS -> Night.Amber
+        CollectionSet.TREASURES -> Night.Diamond
     }
 
 fun Cardinal.label(context: Context): String = context.getString(

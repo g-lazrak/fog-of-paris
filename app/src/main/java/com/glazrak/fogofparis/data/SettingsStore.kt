@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,8 @@ private val LAST_CELEBRATED_LEVEL_KEY = intPreferencesKey("last_celebrated_level
 private val ANNOUNCED_PLACES_KEY = stringSetPreferencesKey("announced_places")
 private val DARK_MAP_KEY = booleanPreferencesKey("dark_map")
 private val REVEALED_PINS_KEY = stringSetPreferencesKey("revealed_treasure_pins")
+private val TRACKING_ENABLED_KEY = booleanPreferencesKey("tracking_enabled")
+private val MENU_THEME_KEY = stringPreferencesKey("menu_theme")
 
 class SettingsStore(private val context: Context) {
 
@@ -57,4 +60,23 @@ class SettingsStore(private val context: Context) {
     suspend fun setLastCelebratedLevel(level: Int) {
         context.settingsDataStore.edit { it[LAST_CELEBRATED_LEVEL_KEY] = level }
     }
+
+    // Suivi voulu par le joueur : null tant qu'il n'a jamais été allumé ni éteint
+    // (alors on le lance dès que les permissions sont là : « on le laisse allumé »).
+    val trackingEnabled: Flow<Boolean?> = context.settingsDataStore.data.map { it[TRACKING_ENABLED_KEY] }
+
+    suspend fun setTrackingEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[TRACKING_ENABLED_KEY] = enabled }
+    }
+
+    // Thème des menus, indépendant de la carte. Sombre par défaut (l'identité du jeu).
+    val menuTheme: Flow<MenuTheme> = context.settingsDataStore.data.map { prefs ->
+        MenuTheme.entries.firstOrNull { it.name == prefs[MENU_THEME_KEY] } ?: MenuTheme.DARK
+    }
+
+    suspend fun setMenuTheme(theme: MenuTheme) {
+        context.settingsDataStore.edit { it[MENU_THEME_KEY] = theme.name }
+    }
 }
+
+enum class MenuTheme { DARK, LIGHT, SYSTEM }

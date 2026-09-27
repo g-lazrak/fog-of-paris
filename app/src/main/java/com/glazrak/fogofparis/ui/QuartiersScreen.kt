@@ -64,6 +64,7 @@ import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.cellsNeededFor
 import com.glazrak.fogofparis.ui.theme.Night
+import com.glazrak.fogofparis.ui.theme.Palette
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -133,8 +134,8 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit,
     }
 }
 
-fun fillFor(progress: QuartierProgress): Color =
-    progress.medal?.color ?: if (progress.revealedCells > 0) Night.Started else Night.Unexplored
+fun fillFor(progress: QuartierProgress, palette: Palette): Color =
+    progress.medal?.colorIn(palette) ?: if (progress.revealedCells > 0) palette.Started else palette.Unexplored
 
 // Dessin des quartiers dans leurs vraies formes. Un appui choisit le quartier touché.
 @Composable
@@ -142,6 +143,7 @@ private fun Mosaic(progress: List<QuartierProgress>, selectedId: Int, onSelect: 
     val quartiers = progress.map { it.quartier }
     val bounds = remember(quartiers) { MosaicBounds.of(quartiers) }
     val description = stringResource(R.string.mosaic_description)
+    val palette = Night
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
@@ -166,11 +168,11 @@ private fun Mosaic(progress: List<QuartierProgress>, selectedId: Int, onSelect: 
                 }
                 path.close()
             }
-            drawPath(path, fillFor(item), style = Fill)
+            drawPath(path, fillFor(item, palette), style = Fill)
             val isSelected = item.quartier.id == selectedId
             drawPath(
                 path,
-                if (isSelected) Color.White else Night.Background,
+                if (isSelected) palette.Text else palette.Background,
                 style = Stroke(width = if (isSelected) 2.dp.toPx() else 0.8.dp.toPx()),
             )
         }
@@ -324,7 +326,7 @@ private fun ArrondissementRow(
                             .fillMaxWidth()
                             .height(if (isSelected) 12.dp else 8.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(fillFor(quartier)),
+                            .background(fillFor(quartier, Night)),
                     )
                 }
             }

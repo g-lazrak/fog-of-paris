@@ -26,9 +26,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.data.MenuTheme
 import com.glazrak.fogofparis.ui.theme.Night
 
 @Composable
@@ -36,6 +44,9 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val nearbyAlerts by viewModel.nearbyAlerts.collectAsStateWithLifecycle()
     val mapLook by viewModel.mapLook.collectAsStateWithLifecycle()
+    val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
+    val menuTheme by viewModel.menuTheme.collectAsStateWithLifecycle()
+    val onStartTracking = rememberTrackingStarter(viewModel)
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
@@ -52,6 +63,15 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
             Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium, color = Night.Text)
         }
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(start = 12.dp)) {
+            SettingSwitch(
+                icon = R.drawable.ic_steps,
+                color = Night.Gold,
+                title = stringResource(R.string.tracking_setting_title),
+                text = stringResource(R.string.tracking_setting_text),
+                checked = isTracking,
+                onChange = { on -> if (on) onStartTracking() else viewModel.stopTracking() },
+            )
+            ThemeChoice(selected = menuTheme, onSelect = viewModel::setMenuTheme)
             SettingSwitch(
                 icon = R.drawable.ic_pin,
                 color = Night.Teal,
@@ -73,6 +93,53 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
         }
     }
 }
+
+// Thème des menus : trois boutons côte à côte, celui choisi en or.
+@Composable
+private fun ThemeChoice(selected: MenuTheme, onSelect: (MenuTheme) -> Unit) {
+    NightCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBadge(R.drawable.ic_contrast, Night.Orchid)
+            Text(
+                stringResource(R.string.menu_theme_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = Night.Text,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MenuTheme.entries.forEach { theme ->
+                val isSelected = theme == selected
+                val shape = RoundedCornerShape(12.dp)
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                        .clip(shape)
+                        .background(if (isSelected) Night.Gold else Night.SurfaceHigh)
+                        .border(1.dp, if (isSelected) Night.Gold else Night.Border, shape)
+                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(theme) })
+                        .padding(horizontal = 6.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        stringResource(theme.label),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isSelected) Night.GoldInk else Night.TextSoft,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val MenuTheme.label: Int
+    get() = when (this) {
+        MenuTheme.DARK -> R.string.menu_theme_dark
+        MenuTheme.LIGHT -> R.string.menu_theme_light
+        MenuTheme.SYSTEM -> R.string.menu_theme_system
+    }
 
 // Un réglage marche / arrêt. Toute la carte est cliquable, pas seulement
 // l'interrupteur (plus facile au doigt).

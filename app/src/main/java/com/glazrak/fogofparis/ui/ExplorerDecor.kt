@@ -1,5 +1,6 @@
 package com.glazrak.fogofparis.ui
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -15,9 +16,18 @@ import com.glazrak.fogofparis.ui.theme.Night
 // propriétaire) : un fond bleu nuit, un quadrillage de méridiens très discret et
 // une grande rose des vents qui déborde du coin. Tout reste en arrière-plan,
 // assez pâle pour ne jamais gêner la lecture.
-fun Modifier.explorerBackground(): Modifier = drawBehind {
-    drawRect(Night.Background)
-    val gridColor = Night.Gold.copy(alpha = 0.045f)
+@Composable
+fun Modifier.explorerBackground(): Modifier {
+    // Lue ici : le dessin lui-même ne peut pas lire le thème.
+    val palette = Night
+    // Sur papier clair, l'or doit être un peu plus marqué pour se voir.
+    val strength = if (palette.isDark) 1f else 1.6f
+    return drawBehind { drawExplorerDecor(palette.Background, palette.Gold, strength) }
+}
+
+private fun DrawScope.drawExplorerDecor(background: Color, gold: Color, strength: Float) {
+    drawRect(background)
+    val gridColor = gold.copy(alpha = 0.045f * strength)
     val step = 56.dp.toPx()
     var x = step / 2
     while (x < size.width) {
@@ -32,7 +42,7 @@ fun Modifier.explorerBackground(): Modifier = drawBehind {
     drawCompassRose(
         center = Offset(size.width * 0.92f, size.height * 0.14f),
         radius = size.width * 0.42f,
-        color = Night.Gold.copy(alpha = 0.07f),
+        color = gold.copy(alpha = 0.07f * strength),
     )
 }
 

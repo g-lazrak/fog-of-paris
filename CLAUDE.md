@@ -74,8 +74,13 @@ Personal project, not published on the Play Store for now.
    - **No `ACCESS_BACKGROUND_LOCATION`** (owner's decision, 2026-09-26, for
      privacy): the service is always started from the visible app, so it keeps
      "while in use" location access with the app closed. Consequence: tracking
-     can't auto-restart after a reboot; the user taps the switch again.
-   - Add a clear on/off switch for tracking in the UI.
+     can't auto-restart after a reboot by itself; it restarts the next time
+     the app is opened.
+   - No start button (owner, 2026-09-27): tracking is on by default once the
+     permissions are granted and restarts whenever the app is opened. A small
+     status chip on the map shows its state (tap it to turn tracking back on
+     when stopped); the on/off switch « Suivi de la marche » lives in Réglages.
+     Stopping from the notification or Réglages is remembered (no auto-restart).
    - **Battery matters**: high-accuracy GPS only while on foot; otherwise
      `PRIORITY_PASSIVE` (no GPS of our own). This lets tracking stay on
      permanently — the owner chose "leave it on for good" (2026-09-27) over a
@@ -121,7 +126,10 @@ Personal project, not published on the Play Store for now.
      FIRST time that day. Revisited streets are not stored (owner declined
      storing daily visits, 2026-09-27).
    - Map style: light (liberty) by default, dark (fiord) as a switch in
-     Réglages; the menus stay dark.
+     Réglages. Menus have their own theme setting (owner, 2026-09-27):
+     Sombre (default) / Clair / Comme le téléphone; light palette = parchment
+     + navy ink + darker ochre gold (`ui/theme/Color.kt`). The level-up
+     celebration always stays dark.
    - Exploration theme (owner, 2026-09-27): tabs Carte · Carnet · Quartiers ·
      Trouvailles; gold kickers « Carnet d'explorateur », « Atlas des
      quartiers », « Cabinet de curiosités »; menu screens drawn on a faint
