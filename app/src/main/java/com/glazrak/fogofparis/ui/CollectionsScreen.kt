@@ -60,7 +60,7 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onH
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
             .fillMaxSize()
-            .background(Night.Background)
+            .explorerBackground()
             .verticalScroll(rememberScrollState())
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
@@ -68,6 +68,7 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onH
         val visited = collections.sumOf { it.visitedCount }
         val complete = collections.count { it.isComplete }
         ScreenHeader(
+            kicker = stringResource(R.string.kicker_collections),
             title = stringResource(R.string.collections_title),
             subtitle = pluralStringResource(R.plurals.collections_places, visited, visited, collections.sumOf { it.places.size }) +
                 " · " + pluralStringResource(R.plurals.collections_complete_sets, complete, complete),

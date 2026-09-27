@@ -122,6 +122,10 @@ Personal project, not published on the Play Store for now.
      storing daily visits, 2026-09-27).
    - Map style: light (liberty) by default, dark (fiord) as a switch in
      Réglages; the menus stay dark.
+   - Exploration theme (owner, 2026-09-27): tabs Carte · Carnet · Quartiers ·
+     Trouvailles; gold kickers « Carnet d'explorateur », « Atlas des
+     quartiers », « Cabinet de curiosités »; menu screens drawn on a faint
+     graticule with a large compass rose (`ExplorerDecor.kt`).
    - **Points are fixed** (owner, 2026-09-27): never multipliers, "double
      points" events or time-limited bonuses. No proximity vibrations either.
    - Phase 8 (built 2026-09-27; treasure list awaiting the owner's review): "Paris la nuit" redesign following the

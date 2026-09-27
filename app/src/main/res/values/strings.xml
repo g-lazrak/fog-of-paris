@@ -55,11 +55,14 @@
     <string name="medal_notification_text">%1$d %% du quartier révélé</string>
     <string name="level_number">Niveau %1$d</string>
     <string name="level_next">Encore %1$s pts pour devenir %2$s</string>
-    <string name="collections_title">Collections</string>
+    <string name="collections_title">Trouvailles</string>
     <string name="tab_map">Carte</string>
-    <string name="tab_progress">Progrès</string>
+    <string name="tab_progress">Carnet</string>
     <string name="tab_quartiers">Quartiers</string>
-    <string name="tab_collections">Collections</string>
+    <string name="tab_collections">Trouvailles</string>
+    <string name="kicker_progress">Carnet d’explorateur</string>
+    <string name="kicker_quartiers">Atlas des quartiers</string>
+    <string name="kicker_collections">Cabinet de curiosités</string>
     <string name="cardinal_n">au nord</string>
     <string name="cardinal_ne">au nord-est</string>
     <string name="cardinal_e">à l\'est</string>

@@ -85,12 +85,13 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit,
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
             .fillMaxSize()
-            .background(Night.Background)
+            .explorerBackground()
             .verticalScroll(scrollState)
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
     ) {
         ScreenHeader(
+            kicker = stringResource(R.string.kicker_quartiers),
             title = stringResource(R.string.quartiers_title),
             subtitle = progress.count { it.medal != null }.let { medalled ->
                 pluralStringResource(R.plurals.quartiers_subtitle, medalled, medalled, progress.size)

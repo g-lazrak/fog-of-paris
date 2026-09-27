@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.glazrak.fogofparis.R
 import com.glazrak.fogofparis.ui.theme.Night
 
@@ -152,14 +153,32 @@ fun IconBadge(@DrawableRes icon: Int, color: Color, size: Dp = 42.dp) {
 
 // En-tête d'écran : grand titre Fraunces et sous-titre gris.
 @Composable
-fun ScreenHeader(title: String, subtitle: String?, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
+fun ScreenHeader(
+    title: String,
+    subtitle: String?,
+    modifier: Modifier = Modifier,
+    kicker: String? = null,
+    trailing: @Composable () -> Unit = {},
+) {
     Row(verticalAlignment = Alignment.Bottom, modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
+            if (kicker != null) Kicker(kicker)
             Text(title, style = MaterialTheme.typography.headlineMedium, color = Night.Text)
             if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Night.TextMuted)
         }
         trailing()
     }
+}
+
+// Petit surtitre doré façon carnet de voyage (« ✦ CARNET D'EXPLORATEUR »).
+@Composable
+fun Kicker(text: String) {
+    Text(
+        "✦ " + text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = Night.Gold,
+        letterSpacing = 1.5.sp,
+    )
 }
 
 // Petit carré de couleur + libellé, pour les légendes.

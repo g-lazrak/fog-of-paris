@@ -77,7 +77,7 @@ fun ProgressScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
             .fillMaxSize()
-            .background(Night.Background)
+            .explorerBackground()
             .verticalScroll(rememberScrollState())
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
@@ -112,6 +112,7 @@ private fun Greeting(title: String?, onOpenSettings: () -> Unit) {
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
+            Kicker(stringResource(R.string.kicker_progress))
             SectionLabel("$day ${stringResource(moment)}")
             Text(
                 if (title != null) stringResource(R.string.hello_with_title, stringResource(hello), title.replaceFirstChar { it.lowercase() })

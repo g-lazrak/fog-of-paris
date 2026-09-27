@@ -40,7 +40,7 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
             .fillMaxSize()
-            .background(Night.Background)
+            .explorerBackground()
             .systemBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
