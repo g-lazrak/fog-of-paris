@@ -1,6 +1,7 @@
 package com.glazrak.fogofparis.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -33,6 +35,7 @@ import com.glazrak.fogofparis.ui.theme.Night
 fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val nearbyAlerts by viewModel.nearbyAlerts.collectAsStateWithLifecycle()
+    val mapLook by viewModel.mapLook.collectAsStateWithLifecycle()
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
@@ -49,32 +52,54 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
             Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium, color = Night.Text)
         }
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(start = 12.dp)) {
-            // Toute la carte est cliquable, pas seulement l'interrupteur (plus facile au doigt).
-            NightCard(
-                modifier = Modifier.toggleable(
-                    value = nearbyAlerts,
-                    role = Role.Switch,
-                    onValueChange = viewModel::setNearbyAlerts,
-                ),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconBadge(R.drawable.ic_pin, Night.Teal)
-                    Text(
-                        stringResource(R.string.nearby_alerts_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Night.Text,
-                        modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                    )
-                    Switch(
-                        checked = nearbyAlerts,
-                        onCheckedChange = null,
-                        colors = SwitchDefaults.colors(checkedTrackColor = Night.Gold, checkedThumbColor = Night.GoldInk),
-                    )
-                }
-                Text(stringResource(R.string.nearby_alerts_text), style = MaterialTheme.typography.bodyMedium, color = Night.TextSoft)
-            }
+            SettingSwitch(
+                icon = R.drawable.ic_pin,
+                color = Night.Teal,
+                title = stringResource(R.string.nearby_alerts_title),
+                text = stringResource(R.string.nearby_alerts_text),
+                checked = nearbyAlerts,
+                onChange = viewModel::setNearbyAlerts,
+            )
+            SettingSwitch(
+                icon = R.drawable.ic_moon,
+                color = Night.Periwinkle,
+                title = stringResource(R.string.dark_map_title),
+                text = stringResource(R.string.dark_map_text),
+                checked = mapLook == MapLook.DARK,
+                onChange = viewModel::setDarkMap,
+            )
             SectionLabel(stringResource(R.string.about_title))
             Text(stringResource(R.string.about_text), style = MaterialTheme.typography.bodySmall, color = Night.TextMuted)
         }
+    }
+}
+
+// Un réglage marche / arrêt. Toute la carte est cliquable, pas seulement
+// l'interrupteur (plus facile au doigt).
+@Composable
+private fun SettingSwitch(
+    @DrawableRes icon: Int,
+    color: Color,
+    title: String,
+    text: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    NightCard(modifier = Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onChange)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBadge(icon, color)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Night.Text,
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(checkedTrackColor = Night.Gold, checkedThumbColor = Night.GoldInk),
+            )
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = Night.TextSoft)
     }
 }

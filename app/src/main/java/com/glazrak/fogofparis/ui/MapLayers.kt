@@ -52,7 +52,15 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 
-const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord"
+// Deux apparences de carte, au choix dans les Réglages. Chacune a son brouillard :
+// sur une carte sombre il faut un brouillard plus dense pour que les zones
+// révélées ressortent (sur « dark », elles devenaient invisibles : écarté).
+enum class MapLook(val styleUrl: String, val fogRgb: Int, val fogOpacity: Int) {
+    // Carte claire (par défaut) : brouillard noir à ~70 %.
+    LIGHT("https://tiles.openfreemap.org/styles/liberty", fogRgb = 0x000000, fogOpacity = 179),
+    // Carte « fiord » bleu-gris : brouillard bleu nuit (fond de l'app) à ~82 %.
+    DARK("https://tiles.openfreemap.org/styles/fiord", fogRgb = 0x0B1020, fogOpacity = 210),
+}
 
 private const val FOG_SOURCE_ID = "fog-source"
 private const val FOG_LAYER_ID = "fog-layer"

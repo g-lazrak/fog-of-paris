@@ -121,6 +121,8 @@
     <string name="nearby_channel_name">Lieux proches</string>
     <string name="nearby_title">📍 %1$s est tout près</string>
     <string name="nearby_text">À %1$s, et pas encore dans votre collection.</string>
+    <string name="dark_map_title">Carte sombre</string>
+    <string name="dark_map_text">Une carte bleu nuit assortie aux menus. Par défaut, la carte est claire : les rues s\'y lisent mieux.</string>
     <string name="about_title">À propos</string>
     <string name="about_text">Carte : © contributeurs OpenStreetMap, OpenFreeMap. Limites de Paris et quartiers : Paris OpenData. Polices Fraunces et DM Sans (licence SIL Open Font). Vos déplacements restent sur votre téléphone.</string>
 </resources>

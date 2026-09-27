@@ -113,6 +113,15 @@ Personal project, not published on the Play Store for now.
      map, compass or nearby alerts; each quartier shows its hint, the name
      stays "???" until found (within ~60 m). +150 pts each, no set bonus. The
      owner reviews the list.
+   - Treasure hunt (owner, 2026-09-27): tapping an unfound treasure while
+     standing in its quartier starts a "chaud / froid" hunt on the map
+     (distance + getting closer/further, no direction). A « Donner sa langue
+     au chat » button reveals the exact pin. Points unchanged.
+   - Day journal: pick a day, see on the map the squares revealed for the
+     FIRST time that day. Revisited streets are not stored (owner declined
+     storing daily visits, 2026-09-27).
+   - Map style: light (liberty) by default, dark (fiord) as a switch in
+     Réglages; the menus stay dark.
    - **Points are fixed** (owner, 2026-09-27): never multipliers, "double
      points" events or time-limited bonuses. No proximity vibrations either.
    - Phase 8 (built 2026-09-27; treasure list awaiting the owner's review): "Paris la nuit" redesign following the

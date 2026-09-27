@@ -141,12 +141,20 @@ fun MapScreen(
                 .target(PARIS_CENTER)
                 .zoom(INITIAL_ZOOM)
                 .build()
-            loadedMap.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { loadedStyle ->
-                useFrenchLabels(loadedStyle)
-                addGameLayers(loadedStyle)
-                style = loadedStyle
-            }
             map = loadedMap
+        }
+    }
+    // (Re)charge le style à l'ouverture et quand on change carte claire / sombre.
+    // Les couches du jeu sont rajoutées, puis tous les effets liés à `style` se
+    // relancent (brouillard, lieux, position…).
+    val mapLook by viewModel.mapLook.collectAsStateWithLifecycle()
+    LaunchedEffect(map, mapLook) {
+        val loadedMap = map ?: return@LaunchedEffect
+        style = null
+        loadedMap.setStyle(Style.Builder().fromUri(mapLook.styleUrl)) { loadedStyle ->
+            useFrenchLabels(loadedStyle)
+            addGameLayers(loadedStyle)
+            style = loadedStyle
         }
     }
 

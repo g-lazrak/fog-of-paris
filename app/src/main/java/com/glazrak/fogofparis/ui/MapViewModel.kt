@@ -27,6 +27,7 @@ import com.glazrak.fogofparis.domain.placeDiscoveryTimes
 import com.glazrak.fogofparis.domain.Place
 import com.glazrak.fogofparis.domain.collectionProgress
 import com.glazrak.fogofparis.domain.levelFor
+import com.glazrak.fogofparis.domain.FOG_ALPHA
 import com.glazrak.fogofparis.domain.FOG_PIXELS_PER_CELL
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.Quartier
@@ -222,8 +223,17 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Recalculée à chaque nouvelle cellule (une petite image, quelques ms).
-    val fogImage: StateFlow<FogImage?> = combine(visitedCells, geo.filterNotNull()) { cells, parisGeo ->
-        buildFogImage(cells, parisGeo.cells)
+    // Carte claire par défaut ; la sombre est un réglage.
+    val mapLook: StateFlow<MapLook> = settings.darkMap
+        .map { dark -> if (dark) MapLook.DARK else MapLook.LIGHT }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, MapLook.LIGHT)
+
+    fun setDarkMap(enabled: Boolean) {
+        viewModelScope.launch { settings.setDarkMap(enabled) }
+    }
+
+    val fogImage: StateFlow<FogImage?> = combine(visitedCells, geo.filterNotNull(), mapLook) { cells, parisGeo, look ->
+        buildFogImage(cells, parisGeo.cells, look)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -303,13 +313,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 // Même bleu nuit que les menus (Night.Background), sans l'opacité.
-private const val FOG_RGB = 0x0B1020
-
-private fun buildFogImage(cells: Set<CellId>, city: CityCells): FogImage {
+private fun buildFogImage(cells: Set<CellId>, city: CityCells, look: MapLook): FogImage {
     val extent = city.extent
-    val alpha = fogAlphaMask(cells, extent)
-    // Bleu nuit (fond de l'app) avec l'opacité calculée : couleur ARGB = alpha << 24 | RGB.
-    val colors = IntArray(alpha.size) { (alpha[it] shl 24) or FOG_RGB }
+    val strength = fogAlphaMask(cells, extent)
+    // Couleur du brouillard du style, opacité = force du masque × opacité du style.
+    // Couleur ARGB = alpha << 24 | RGB.
+    val colors = IntArray(strength.size) { ((strength[it] * look.fogOpacity / FOG_ALPHA) shl 24) or look.fogRgb }
     val bitmap = Bitmap.createBitmap(
         colors,
         extent.width * FOG_PIXELS_PER_CELL,

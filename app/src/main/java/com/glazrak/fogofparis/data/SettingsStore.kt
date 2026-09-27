@@ -17,6 +17,7 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 private val NEARBY_ALERTS_KEY = booleanPreferencesKey("nearby_alerts")
 private val LAST_CELEBRATED_LEVEL_KEY = intPreferencesKey("last_celebrated_level")
 private val ANNOUNCED_PLACES_KEY = stringSetPreferencesKey("announced_places")
+private val DARK_MAP_KEY = booleanPreferencesKey("dark_map")
 
 class SettingsStore(private val context: Context) {
 
@@ -33,6 +34,13 @@ class SettingsStore(private val context: Context) {
 
     suspend fun addAnnouncedPlace(id: String) {
         context.settingsDataStore.edit { it[ANNOUNCED_PLACES_KEY] = it[ANNOUNCED_PLACES_KEY].orEmpty() + id }
+    }
+
+    // Carte sombre : désactivée par défaut (le propriétaire préfère la carte claire).
+    val darkMap: Flow<Boolean> = context.settingsDataStore.data.map { it[DARK_MAP_KEY] ?: false }
+
+    suspend fun setDarkMap(enabled: Boolean) {
+        context.settingsDataStore.edit { it[DARK_MAP_KEY] = enabled }
     }
 
     // Dernier niveau déjà fêté à l'écran ; null avant la toute première ouverture.
