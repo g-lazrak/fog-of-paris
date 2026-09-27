@@ -35,6 +35,13 @@ import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.TrackingStatus
 import com.glazrak.fogofparis.domain.VisitedCell
 import com.glazrak.fogofparis.domain.DayCount
+import com.glazrak.fogofparis.domain.HuntStart
+import com.glazrak.fogofparis.domain.Trend
+import com.glazrak.fogofparis.domain.Warmth
+import com.glazrak.fogofparis.domain.canStartHunt
+import com.glazrak.fogofparis.domain.distanceMeters
+import com.glazrak.fogofparis.domain.trendOf
+import com.glazrak.fogofparis.domain.warmthFor
 import com.glazrak.fogofparis.domain.WeekCount
 import com.glazrak.fogofparis.domain.adjacentActiveDay
 import com.glazrak.fogofparis.domain.cellToBounds
@@ -77,6 +84,19 @@ data class GameSummary(
 
 // Un lieu de collection à afficher sur la carte.
 data class PlaceMarker(val place: Place, val visited: Boolean)
+
+// Chasse au trésor en cours, telle qu'affichée par le bandeau de la carte.
+data class HuntState(
+    val treasure: Place,
+    // null tant qu'on ne connaît pas la position.
+    val distanceMeters: Double?,
+    val warmth: Warmth?,
+    val trend: Trend,
+    val pinRevealed: Boolean,
+    val found: Boolean,
+    // Suivi actif : la distance se met à jour en marchant ; sinon, elle est figée.
+    val liveTracking: Boolean,
+)
 
 // Où déplacer la carte. Le numéro permet de redemander la même chose.
 sealed interface CameraMove {
@@ -277,6 +297,67 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearDay() {
         _selectedDay.value = null
+    }
+
+    // --- Chasse au trésor « chaud / froid » ---
+
+    private val huntedTreasure = MutableStateFlow<Place?>(null)
+    private var lastHuntDistance: Double? = null
+    private var lastHuntTrend = Trend.STEADY
+
+    private val revealedPins: StateFlow<Set<String>> = settings.revealedTreasurePins
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    // État de la chasse en cours (null = pas de chasse) : distance, chaleur,
+    // tendance, épingle révélée, trouvé.
+    val hunt: StateFlow<HuntState?> =
+        combine(huntedTreasure, currentPosition, collections, revealedPins, TrackingState.isTracking) { treasure, position, sets, pins, tracking ->
+            if (treasure == null) return@combine null
+            val found = sets.any { treasure.id in it.visitedIds }
+            val distance = position?.let { distanceMeters(it, treasure.position) }
+            val newTrend = if (distance != null) trendOf(lastHuntDistance, distance) else Trend.STEADY
+            // La référence n'avance que sur un vrai déplacement, pas sur le bruit GPS,
+            // et la dernière tendance reste affichée tant qu'aucun vrai mouvement ne la contredit.
+            if (newTrend != Trend.STEADY || lastHuntDistance == null) lastHuntDistance = distance
+            if (newTrend != Trend.STEADY) lastHuntTrend = newTrend
+            val trend = lastHuntTrend
+            HuntState(
+                treasure = treasure,
+                distanceMeters = distance,
+                warmth = distance?.let { warmthFor(it) },
+                trend = trend,
+                pinRevealed = treasure.id in pins,
+                found = found,
+                liveTracking = tracking,
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Lance la chasse si l'on est dans le quartier du trésor ; sinon dit pourquoi.
+    suspend fun startHunt(treasure: Place): HuntStart {
+        val parisGeo = geo.value ?: return HuntStart.NoPosition
+        val position = currentPosition.value ?: lastKnownPosition(getApplication())
+        val result = canStartHunt(treasure, position, parisGeo.quartiers)
+        if (result == HuntStart.Started) {
+            if (!TrackingState.isTracking.value) oneShotPosition.value = position
+            lastHuntDistance = null
+            lastHuntTrend = Trend.STEADY
+            huntedTreasure.value = treasure
+            _selectedDay.value = null
+        }
+        return result
+    }
+
+    // « Donner sa langue au chat » : l'épingle exacte apparaît (points inchangés).
+    fun giveUpHunt() {
+        val treasure = huntedTreasure.value ?: return
+        viewModelScope.launch { settings.addRevealedTreasurePin(treasure.id) }
+        _cameraMove.value = CameraMove.ToPosition(treasure.position, nextRequestId())
+    }
+
+    fun stopHunt() {
+        huntedTreasure.value = null
+        lastHuntDistance = null
+        lastHuntTrend = Trend.STEADY
     }
 
     // Carte claire par défaut ; la sombre est un réglage.

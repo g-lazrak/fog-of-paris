@@ -50,7 +50,7 @@ private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", 
 
 // Écran « Collections » : les séries de lieux à compléter.
 @Composable
-fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit) {
+fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onHuntTreasure: (Place) -> Unit) {
     val collections by viewModel.collections.collectAsStateWithLifecycle()
     val recent by viewModel.recentDiscoveries.collectAsStateWithLifecycle()
     var openSet by rememberSaveable { mutableStateOf<CollectionSet?>(null) }
@@ -85,7 +85,7 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit) {
                 }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
-            pair.firstOrNull { it.set == openSet }?.let { PlaceList(it, onShowPlace) }
+            pair.firstOrNull { it.set == openSet }?.let { PlaceList(it, onShowPlace, onHuntTreasure) }
         }
         if (recent.isNotEmpty()) {
             SectionLabel(stringResource(R.string.recent_discoveries))
@@ -145,7 +145,7 @@ private fun SetCard(collection: CollectionProgress, isOpen: Boolean, onClick: ()
 
 // Lieux de la série ouverte : visités d'abord, puis les autres ; un appui les montre sur la carte.
 @Composable
-private fun PlaceList(collection: CollectionProgress, onShowPlace: (Place) -> Unit) {
+private fun PlaceList(collection: CollectionProgress, onShowPlace: (Place) -> Unit, onHuntTreasure: (Place) -> Unit) {
     val color = if (collection.isComplete) Night.Gold else collection.set.color
     NightCard(padding = 8.dp) {
         collection.places
@@ -159,7 +159,8 @@ private fun PlaceList(collection: CollectionProgress, onShowPlace: (Place) -> Un
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 40.dp)
-                        .then(if (secret) Modifier else Modifier.clickable { onShowPlace(place) })
+                        // Trésor caché : un appui lance la chasse (si on est dans son quartier).
+                        .clickable { if (secret) onHuntTreasure(place) else onShowPlace(place) }
                         .padding(horizontal = 8.dp, vertical = if (secret) 6.dp else 0.dp),
                 ) {
                     Box(

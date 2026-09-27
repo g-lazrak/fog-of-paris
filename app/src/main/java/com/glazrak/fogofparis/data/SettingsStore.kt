@@ -18,6 +18,7 @@ private val NEARBY_ALERTS_KEY = booleanPreferencesKey("nearby_alerts")
 private val LAST_CELEBRATED_LEVEL_KEY = intPreferencesKey("last_celebrated_level")
 private val ANNOUNCED_PLACES_KEY = stringSetPreferencesKey("announced_places")
 private val DARK_MAP_KEY = booleanPreferencesKey("dark_map")
+private val REVEALED_PINS_KEY = stringSetPreferencesKey("revealed_treasure_pins")
 
 class SettingsStore(private val context: Context) {
 
@@ -34,6 +35,13 @@ class SettingsStore(private val context: Context) {
 
     suspend fun addAnnouncedPlace(id: String) {
         context.settingsDataStore.edit { it[ANNOUNCED_PLACES_KEY] = it[ANNOUNCED_PLACES_KEY].orEmpty() + id }
+    }
+
+    // Trésors dont on a « donné sa langue au chat » : leur épingle reste affichée.
+    val revealedTreasurePins: Flow<Set<String>> = context.settingsDataStore.data.map { it[REVEALED_PINS_KEY].orEmpty() }
+
+    suspend fun addRevealedTreasurePin(id: String) {
+        context.settingsDataStore.edit { it[REVEALED_PINS_KEY] = it[REVEALED_PINS_KEY].orEmpty() + id }
     }
 
     // Carte sombre : désactivée par défaut (le propriétaire préfère la carte claire).

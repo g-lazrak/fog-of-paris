@@ -66,6 +66,8 @@ private const val FOG_SOURCE_ID = "fog-source"
 private const val FOG_LAYER_ID = "fog-layer"
 private const val QUARTIERS_SOURCE_ID = "quartiers-source"
 private const val QUARTIERS_LAYER_ID = "quartiers-layer"
+private const val HUNT_SOURCE_ID = "hunt-source"
+private const val HUNT_LAYER_ID = "hunt-layer"
 private const val DAY_SOURCE_ID = "day-source"
 private const val DAY_LAYER_ID = "day-layer"
 private const val OUTSIDE_SOURCE_ID = "outside-source"
@@ -147,6 +149,16 @@ fun addGameLayers(style: Style) {
             textOpacity(interpolate(linear(), zoom(), stop(14, 0f), stop(14.5, 1f))),
         )
     )
+    // Épingle du trésor, seulement après « Donner sa langue au chat ».
+    style.addSource(GeoJsonSource(HUNT_SOURCE_ID))
+    style.addLayer(
+        CircleLayer(HUNT_LAYER_ID, HUNT_SOURCE_ID).withProperties(
+            circleRadius(10f),
+            circleColor(Color.rgb(127, 214, 232)),
+            circleStrokeWidth(3f),
+            circleStrokeColor(Color.WHITE),
+        )
+    )
     style.addSource(GeoJsonSource(POSITION_SOURCE_ID))
     style.addLayer(
         CircleLayer(POSITION_LAYER_ID, POSITION_SOURCE_ID).withProperties(
@@ -184,6 +196,15 @@ fun updateFog(style: Style, fog: FogImage) {
         ),
         QUARTIERS_LAYER_ID,
     )
+}
+
+fun updateHuntPin(style: Style, position: GeoPosition?) {
+    val source = style.getSourceAs<GeoJsonSource>(HUNT_SOURCE_ID) ?: return
+    if (position == null) {
+        source.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+    } else {
+        source.setGeoJson(Point.fromLngLat(position.lon, position.lat))
+    }
 }
 
 fun updateDayCells(style: Style, cells: Set<CellId>) {

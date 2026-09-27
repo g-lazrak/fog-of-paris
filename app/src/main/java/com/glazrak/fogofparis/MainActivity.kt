@@ -18,6 +18,12 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.glazrak.fogofparis.domain.HuntStart
+import com.glazrak.fogofparis.domain.Place
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -52,6 +58,22 @@ class MainActivity : ComponentActivity() {
                 var tab by rememberSaveable { mutableStateOf(AppTab.MAP) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 val levelToCelebrate by viewModel.levelToCelebrate.collectAsStateWithLifecycle()
+                val context = LocalContext.current
+                val scope = rememberCoroutineScope()
+                // Chasse au trésor : seulement depuis le quartier du trésor ; sinon, on dit où aller.
+                val onHuntTreasure: (Place) -> Unit = { treasure ->
+                    scope.launch {
+                        when (val result = viewModel.startHunt(treasure)) {
+                            HuntStart.Started -> tab = AppTab.MAP
+                            is HuntStart.WrongQuartier -> Toast.makeText(
+                                context,
+                                context.getString(R.string.hunt_wrong_quartier, result.treasureQuartier.name),
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            HuntStart.NoPosition -> Toast.makeText(context, R.string.hunt_no_position, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
 
                 // Pas de Scaffold : son padding rétrécissait la carte.
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -82,6 +104,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                     AppTab.QUARTIERS -> QuartiersScreen(
                                         viewModel = viewModel,
+                                        onHuntTreasure = onHuntTreasure,
                                         onShowQuartier = { quartier ->
                                             viewModel.showQuartier(quartier)
                                             tab = AppTab.MAP
@@ -89,6 +112,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                     AppTab.COLLECTIONS -> CollectionsScreen(
                                         viewModel = viewModel,
+                                        onHuntTreasure = onHuntTreasure,
                                         onShowPlace = { place ->
                                             viewModel.showPlace(place)
                                             tab = AppTab.MAP

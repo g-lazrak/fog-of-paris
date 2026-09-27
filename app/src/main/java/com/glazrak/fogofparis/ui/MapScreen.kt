@@ -41,6 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.glazrak.fogofparis.domain.Warmth
+import com.glazrak.fogofparis.domain.Trend
+import com.glazrak.fogofparis.domain.CollectionSet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.IconButton
@@ -131,6 +135,7 @@ fun MapScreen(
     val quartierOutlines by viewModel.quartierOutlines.collectAsStateWithLifecycle()
     val placeMarkers by viewModel.placeMarkers.collectAsStateWithLifecycle()
     val selectedDay by viewModel.selectedDay.collectAsStateWithLifecycle()
+    val hunt by viewModel.hunt.collectAsStateWithLifecycle()
     val dayCells by viewModel.dayCells.collectAsStateWithLifecycle()
     val cameraMove by viewModel.cameraMove.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
@@ -197,6 +202,11 @@ fun MapScreen(
         }
         map?.animateCamera(update)
     }
+    // L'épingle n'apparaît qu'après « Donner sa langue au chat », et plus une fois trouvé.
+    val huntPin = hunt?.takeIf { it.pinRevealed && !it.found }?.treasure?.position
+    LaunchedEffect(style, huntPin) {
+        style?.let { updateHuntPin(it, huntPin) }
+    }
     LaunchedEffect(style, dayCells) {
         style?.let { updateDayCells(it, dayCells) }
     }
@@ -237,7 +247,15 @@ fun MapScreen(
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(top = 12.dp)
         val day = selectedDay
-        if (day != null) {
+        val currentHunt = hunt
+        if (currentHunt != null) {
+            HuntBanner(
+                hunt = currentHunt,
+                onGiveUp = viewModel::giveUpHunt,
+                onClose = viewModel::stopHunt,
+                modifier = topBannerModifier,
+            )
+        } else if (day != null) {
             DayBanner(
                 day = day,
                 cellCount = dayCells.size,
@@ -477,4 +495,79 @@ private fun DayBanner(
             }
         }
     }
+}
+
+// Bandeau de la chasse au trésor : indice, chaud / froid, tendance, et
+// « Donner sa langue au chat » pour voir l'épingle.
+@Composable
+private fun HuntBanner(hunt: HuntState, onGiveUp: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val treasureColor = CollectionSet.TREASURES.color
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, treasureColor),
+        modifier = modifier.padding(horizontal = 16.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(painterResource(R.drawable.ic_treasure), contentDescription = null, tint = treasureColor, modifier = Modifier.size(20.dp))
+                Text(
+                    if (hunt.found) stringResource(R.string.hunt_found, hunt.treasure.name) else stringResource(R.string.hunt_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = treasureColor,
+                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                )
+                IconButton(onClick = onClose) {
+                    Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.hunt_stop))
+                }
+            }
+            if (!hunt.found) {
+                Text(hunt.treasure.hint.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Night.TextSoft, modifier = Modifier.padding(end = 12.dp))
+                val warmth = hunt.warmth
+                val distance = hunt.distanceMeters
+                if (warmth != null && distance != null) {
+                    Text(
+                        "${stringResource(warmthLabel(warmth))} · ${formatDistance(distance)}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = warmthColor(warmth),
+                    )
+                    trendLabel(hunt.trend)?.let {
+                        Text(stringResource(it), style = MaterialTheme.typography.labelLarge, color = Night.TextSoft)
+                    }
+                }
+                if (!hunt.liveTracking) {
+                    Text(stringResource(R.string.hunt_needs_tracking), style = MaterialTheme.typography.labelMedium, color = Night.TextMuted, modifier = Modifier.padding(end = 12.dp))
+                }
+                if (!hunt.pinRevealed) {
+                    OutlinedButton(onClick = onGiveUp, border = BorderStroke(1.dp, Night.BorderStrong)) {
+                        Text(stringResource(R.string.hunt_give_up), color = Night.Text)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun warmthLabel(warmth: Warmth): Int = when (warmth) {
+    Warmth.BURNING -> R.string.warmth_burning
+    Warmth.VERY_HOT -> R.string.warmth_very_hot
+    Warmth.HOT -> R.string.warmth_hot
+    Warmth.WARM -> R.string.warmth_warm
+    Warmth.COLD -> R.string.warmth_cold
+}
+
+// Du bleu (froid) au rouge (brûlant) : se lit d'un coup d'œil.
+private fun warmthColor(warmth: Warmth): Color = when (warmth) {
+    Warmth.BURNING -> Color(0xFFFF5A36)
+    Warmth.VERY_HOT -> Color(0xFFFF8A3D)
+    Warmth.HOT -> Color(0xFFF2B33D)
+    Warmth.WARM -> Color(0xFFE6D27A)
+    Warmth.COLD -> Color(0xFF8FB8FF)
+}
+
+private fun trendLabel(trend: Trend): Int? = when (trend) {
+    Trend.CLOSER -> R.string.trend_closer
+    Trend.FARTHER -> R.string.trend_farther
+    Trend.STEADY -> null
 }

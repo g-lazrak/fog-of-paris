@@ -59,6 +59,7 @@ import com.glazrak.fogofparis.domain.CollectionSet
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.arrondissementBadges
 import com.glazrak.fogofparis.domain.Medal
+import com.glazrak.fogofparis.domain.Place
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.cellsNeededFor
@@ -69,7 +70,7 @@ import kotlin.math.cos
 
 // Écran « Quartiers » : la mosaïque des 80 quartiers, colorés par médaille.
 @Composable
-fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit) {
+fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit, onHuntTreasure: (Place) -> Unit) {
     val progress by viewModel.quartierProgress.collectAsStateWithLifecycle()
     val treasures by viewModel.treasureByQuartier.collectAsStateWithLifecycle()
     if (progress.isEmpty()) return
@@ -103,7 +104,11 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
                 LegendItem(Night.Started, stringResource(R.string.legend_started))
             }
         }
-        SelectedQuartierCard(selected, treasures[selected.quartier.id], onShow = { onShowQuartier(selected.quartier) })
+        SelectedQuartierCard(
+            selected, treasures[selected.quartier.id],
+            onShow = { onShowQuartier(selected.quartier) },
+            onHuntTreasure = onHuntTreasure,
+        )
         val badges = remember(progress) { arrondissementBadges(progress).associateBy { it.arrondissement } }
         Column {
             SectionLabel(stringResource(R.string.badges_title))
@@ -201,7 +206,12 @@ private class MosaicBounds(val west: Double, val east: Double, val south: Double
 }
 
 @Composable
-private fun SelectedQuartierCard(progress: QuartierProgress, treasure: PlaceMarker?, onShow: () -> Unit) {
+private fun SelectedQuartierCard(
+    progress: QuartierProgress,
+    treasure: PlaceMarker?,
+    onShow: () -> Unit,
+    onHuntTreasure: (Place) -> Unit,
+) {
     val context = LocalContext.current
     val medal = progress.medal
     val accent = medal?.color ?: Night.TextMuted
@@ -246,7 +256,7 @@ private fun SelectedQuartierCard(progress: QuartierProgress, treasure: PlaceMark
         }
         // Barre pleine à 75 % : la médaille « Maîtrisé », le maximum réaliste.
         NightProgressBar((progress.percent / Medal.MASTERED.thresholdPercent).toFloat(), medal?.color ?: Night.Started, height = 8.dp)
-        treasure?.let { TreasureLine(it) }
+        treasure?.let { TreasureLine(it, onHunt = { onHuntTreasure(it.place) }) }
         Button(
             onClick = onShow,
             colors = ButtonDefaults.buttonColors(containerColor = Night.Text, contentColor = Night.Background),
@@ -261,9 +271,14 @@ private fun SelectedQuartierCard(progress: QuartierProgress, treasure: PlaceMark
 
 // Le trésor du quartier : son indice tant qu'il est caché, son nom une fois trouvé.
 @Composable
-private fun TreasureLine(treasure: PlaceMarker) {
+private fun TreasureLine(treasure: PlaceMarker, onHunt: () -> Unit) {
     val color = CollectionSet.TREASURES.color
-    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        // Trésor pas encore trouvé : un appui lance la chasse « chaud / froid ».
+        modifier = if (treasure.visited) Modifier else Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onHunt),
+    ) {
         IconBadge(R.drawable.ic_treasure, if (treasure.visited) color else Night.TextMuted, size = 36.dp)
         Column(modifier = Modifier.weight(1f)) {
             SectionLabel(stringResource(R.string.treasure_hint_label))
@@ -271,6 +286,7 @@ private fun TreasureLine(treasure: PlaceMarker) {
                 Text(treasure.place.name, style = MaterialTheme.typography.titleMedium, color = color)
             } else {
                 Text(treasure.place.hint.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Night.TextSoft)
+                Text(stringResource(R.string.hunt_start_hint), style = MaterialTheme.typography.labelMedium, color = color)
             }
         }
     }

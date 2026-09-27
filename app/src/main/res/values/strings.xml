@@ -130,6 +130,21 @@
         <item quantity="one">%1$d nouveau carré</item>
         <item quantity="other">%1$d nouveaux carrés</item>
     </plurals>
+    <string name="hunt_title">Chasse au trésor</string>
+    <string name="hunt_found">💎 Trouvé : %1$s</string>
+    <string name="hunt_stop">Arrêter la chasse</string>
+    <string name="hunt_give_up">Donner sa langue au chat</string>
+    <string name="hunt_needs_tracking">Démarrez le suivi pour savoir si vous chauffez en marchant.</string>
+    <string name="hunt_wrong_quartier">Ce trésor se cache dans le quartier %1$s : rendez-vous-y pour lancer la chasse.</string>
+    <string name="hunt_no_position">Position inconnue : démarrez le suivi pour lancer la chasse.</string>
+    <string name="hunt_start_hint">Toucher pour chercher ce trésor</string>
+    <string name="warmth_burning">Brûlant !</string>
+    <string name="warmth_very_hot">Très chaud</string>
+    <string name="warmth_hot">Chaud</string>
+    <string name="warmth_warm">Tiède</string>
+    <string name="warmth_cold">Froid</string>
+    <string name="trend_closer">Vous vous rapprochez</string>
+    <string name="trend_farther">Vous vous éloignez</string>
     <string name="dark_map_title">Carte sombre</string>
     <string name="dark_map_text">Une carte bleu nuit assortie aux menus. Par défaut, la carte est claire : les rues s\'y lisent mieux.</string>
     <string name="about_title">À propos</string>
