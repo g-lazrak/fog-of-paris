@@ -92,6 +92,22 @@ Personal project, not published on the Play Store for now.
    - History is derived from `firstVisitedAt` (cells per week, medal dates);
      nothing extra stored.
    - Quiet notification (no sound) when a medal is won while tracking.
+5. **Collections & levels (approved by the owner 2026-09-27).**
+   - 7 sets, 145 places (`tools/places/places.tsv` → `assets/places.geojson`,
+     coordinates from OSM): 34 walkable Seine bridges, 18 town halls (Hôtel de
+     Ville + Paris Centre + 5e–20e), 16 passages couverts, 30 monuments,
+     25 parks, 15 squares, 7 main stations.
+   - A place counts when a revealed cell's centre is within the place's radius
+     (60 m bridges … 150 m big roundabouts; the cell containing the place always
+     counts). Retroactive. +50 pts per place, +500 per completed set.
+   - Unvisited places are shown on the map as grey dots (destinations),
+     visited ones in gold.
+   - Levels by points, owner's order: Badaud 0, Promeneur 500, Flâneur 1 500,
+     Touriste 3 500, Arpenteur 7 000, Explorateur 12 000, Parisien 20 000,
+     Cartographe 30 000, Baron Haussmann 45 000.
+   - Quiet notifications for new place, completed set, new title.
+   - Next (approved, not started): dark "night map" menu redesign (Paris mosaic,
+     progress ring, trophy cabinet, tabs, animations).
 
 ---
 

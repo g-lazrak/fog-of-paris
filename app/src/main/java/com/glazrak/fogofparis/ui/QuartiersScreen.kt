@@ -28,6 +28,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,7 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.domain.CollectionProgress
+import com.glazrak.fogofparis.domain.CollectionSet
+import com.glazrak.fogofparis.domain.LevelProgress
 import com.glazrak.fogofparis.domain.Medal
+import com.glazrak.fogofparis.tracking.collectionNameRes
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.WeekCount
@@ -58,6 +66,7 @@ fun QuartiersScreen(
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val progress by viewModel.quartierProgress.collectAsStateWithLifecycle()
     val history by viewModel.weeklyHistory.collectAsStateWithLifecycle()
+    val collections by viewModel.collections.collectAsStateWithLifecycle()
     val byArrondissement = progress.groupBy { it.quartier.arrondissement }.toSortedMap()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -70,7 +79,11 @@ fun QuartiersScreen(
             }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 item {
-                    summary?.let { SummaryCard(it, progress) }
+                    summary?.let {
+                        SummaryCard(it, progress)
+                        LevelCard(it.level)
+                    }
+                    CollectionsSection(collections)
                     HistoryChart(history)
                 }
                 byArrondissement.forEach { (arrondissement, quartiers) ->
@@ -113,6 +126,105 @@ private fun SummaryCard(summary: GameSummary, progress: List<QuartierProgress>) 
         }
     }
 }
+
+// Titre actuel et avancement vers le suivant.
+@Composable
+private fun LevelCard(progress: LevelProgress) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                stringResource(R.string.level_number, progress.level.number),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(progress.level.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(6.dp))
+        LinearProgressIndicator(
+            progress = { progress.fractionToNext },
+            color = LEVEL_COLOR,
+            trackColor = LEVEL_COLOR.copy(alpha = 0.18f),
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+            modifier = Modifier.fillMaxWidth().height(8.dp),
+        )
+        progress.next?.let { next ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.level_next, formatPoints(next.minPoints - progress.points), next.title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CollectionsSection(collections: List<CollectionProgress>) {
+    if (collections.isEmpty()) return
+    var expanded by remember { mutableStateOf<CollectionSet?>(null) }
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(
+            stringResource(R.string.collections_title),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        collections.forEach { collection ->
+            val color = if (collection.isComplete) Medal.GOLD.color else COLLECTION_COLOR
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = if (expanded == collection.set) null else collection.set }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(collection.set.emoji, modifier = Modifier.padding(end = 8.dp))
+                    Text(
+                        stringResource(collectionNameRes(collection.set)),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "${collection.visitedCount} / ${collection.places.size}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = color,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { collection.visitedCount.toFloat() / collection.places.size },
+                    color = color,
+                    trackColor = color.copy(alpha = 0.18f),
+                    strokeCap = StrokeCap.Round,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                )
+                if (expanded == collection.set) {
+                    Spacer(Modifier.height(6.dp))
+                    // Lieux visités d'abord, puis les autres par ordre alphabétique.
+                    collection.places
+                        .sortedWith(compareBy({ it.id !in collection.visitedIds }, { it.name }))
+                        .forEach { place ->
+                            val visited = place.id in collection.visitedIds
+                            Text(
+                                (if (visited) "✓  " else "○  ") + place.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (visited) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 2.dp),
+                            )
+                        }
+                }
+            }
+        }
+    }
+}
+
+private val LEVEL_COLOR = Color(0xFF3F51B5)
+private val COLLECTION_COLOR = Color(0xFF26A69A)
 
 // Petites barres : cellules révélées chacune des 8 dernières semaines.
 @Composable

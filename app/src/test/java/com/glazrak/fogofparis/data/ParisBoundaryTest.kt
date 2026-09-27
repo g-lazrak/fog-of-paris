@@ -2,6 +2,7 @@ package com.glazrak.fogofparis.data
 
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
+import com.glazrak.fogofparis.domain.CollectionSet
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierIndex
 import com.glazrak.fogofparis.domain.latLonToCell
@@ -38,6 +39,16 @@ class ParisBoundaryTest {
     fun outline_area_matches_official_paris_area() {
         // Superficie officielle de la commune : ~105,4 km².
         assertEquals(105.4, areaInSquareMeters(paris.rings.single()) / 1_000_000, 1.0)
+    }
+
+    @Test
+    fun all_145_places_load_are_unique_and_inside_paris() {
+        val places = placesFromGeoJson(File("src/main/assets/$PLACES_ASSET").readText())
+        assertEquals(145, places.size)
+        assertEquals(places.size, places.map { it.id }.toSet().size)
+        assertEquals(CollectionSet.entries.toSet(), places.map { it.set }.toSet())
+        val outside = places.filterNot { paris.contains(it.position) }.map { it.name }
+        assertTrue("Places outside Paris: $outside", outside.isEmpty())
     }
 
     @Test

@@ -118,6 +118,7 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
     val fogImage by viewModel.fogImage.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val quartierOutlines by viewModel.quartierOutlines.collectAsStateWithLifecycle()
+    val placeMarkers by viewModel.placeMarkers.collectAsStateWithLifecycle()
     val cameraMove by viewModel.cameraMove.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
     val parisBoundary by viewModel.parisBoundary.collectAsStateWithLifecycle()
@@ -166,6 +167,9 @@ fun MapScreen(viewModel: MapViewModel, onOpenQuartiers: () -> Unit) {
             }
         }
         map?.animateCamera(update)
+    }
+    LaunchedEffect(style, placeMarkers) {
+        style?.let { updatePlaces(it, placeMarkers) }
     }
     LaunchedEffect(style, quartierOutlines) {
         style?.let { updateQuartierOutlines(it, quartierOutlines) }
@@ -252,6 +256,7 @@ private fun SummaryBanner(summary: GameSummary, onClick: () -> Unit, modifier: M
             Text(
                 text = stringResource(
                     R.string.progress_label,
+                    summary.level.level.title,
                     formatPercent(summary.percent),
                     formatPoints(summary.points),
                 ),

@@ -1,0 +1,146 @@
+set	id	name	lat	lon	radius
+BRIDGES	pont-garigliano	Pont du Garigliano	48.8393245	2.2683789	60
+BRIDGES	pont-mirabeau	Pont Mirabeau	48.8466609	2.2755792	60
+BRIDGES	pont-grenelle	Pont de Grenelle	48.8506222	2.2795410	60
+BRIDGES	pont-rouelle	Pont Rouelle	48.8526631	2.2828574	60
+BRIDGES	pont-bir-hakeim	Pont de Bir-Hakeim	48.8556731	2.2875819	60
+BRIDGES	pont-iena	Pont d'Iéna	48.8598089	2.2920733	60
+BRIDGES	passerelle-debilly	Passerelle Debilly	48.8625611	2.2969296	60
+BRIDGES	pont-alma	Pont de l'Alma	48.8634373	2.3018510	60
+BRIDGES	pont-invalides	Pont des Invalides	48.8635645	2.3103980	60
+BRIDGES	pont-alexandre-iii	Pont Alexandre-III	48.8636423	2.3135438	60
+BRIDGES	pont-concorde	Pont de la Concorde	48.8633752	2.3195916	60
+BRIDGES	passerelle-senghor	Passerelle Léopold-Sédar-Senghor	48.8617932	2.3246884	60
+BRIDGES	pont-royal	Pont Royal	48.8601291	2.3299214	60
+BRIDGES	pont-carrousel	Pont du Carrousel	48.8593874	2.3329370	60
+BRIDGES	pont-des-arts	Pont des Arts	48.8584388	2.3375444	60
+BRIDGES	pont-neuf	Pont Neuf	48.8580705	2.3421290	60
+BRIDGES	pont-saint-michel	Pont Saint-Michel	48.8540490	2.3446313	60
+BRIDGES	petit-pont	Petit-Pont – Cardinal-Lustiger	48.8533057	2.3469586	60
+BRIDGES	pont-au-double	Pont au Double	48.8525949	2.3484428	60
+BRIDGES	pont-au-change	Pont au Change	48.8567023	2.3467772	60
+BRIDGES	pont-notre-dame	Pont Notre-Dame	48.8561677	2.3486119	60
+BRIDGES	pont-arcole	Pont d'Arcole	48.8555251	2.3506034	60
+BRIDGES	pont-archeveche	Pont de l'Archevêché	48.8515132	2.3515429	60
+BRIDGES	pont-saint-louis	Pont Saint-Louis	48.8527674	2.3527682	60
+BRIDGES	pont-louis-philippe	Pont Louis-Philippe	48.8538440	2.3544268	60
+BRIDGES	pont-tournelle	Pont de la Tournelle	48.8506211	2.3554544	60
+BRIDGES	pont-marie	Pont Marie	48.8528656	2.3574160	60
+BRIDGES	pont-sully	Pont de Sully	48.8497728	2.3579506	60
+BRIDGES	pont-austerlitz	Pont d'Austerlitz	48.8451922	2.3664352	60
+BRIDGES	pont-charles-de-gaulle	Pont Charles-de-Gaulle	48.8426158	2.3690362	60
+BRIDGES	pont-bercy	Pont de Bercy	48.8379535	2.3749366	60
+BRIDGES	passerelle-beauvoir	Passerelle Simone-de-Beauvoir	48.8354489	2.3784107	60
+BRIDGES	pont-tolbiac	Pont de Tolbiac	48.8329352	2.3810601	60
+BRIDGES	pont-national	Pont National	48.8278789	2.3870300	60
+TOWNHALLS	hotel-de-ville	Hôtel de Ville	48.8569657	2.3514544	100
+TOWNHALLS	mairie-paris-centre	Mairie de Paris Centre	48.8638756	2.3617728	75
+TOWNHALLS	mairie-05	Mairie du 5e	48.8460037	2.3443315	75
+TOWNHALLS	mairie-06	Mairie du 6e	48.8506119	2.3322896	75
+TOWNHALLS	mairie-07	Mairie du 7e	48.8573406	2.3204463	75
+TOWNHALLS	mairie-08	Mairie du 8e	48.8773696	2.3173312	75
+TOWNHALLS	mairie-09	Mairie du 9e	48.8724832	2.3412640	75
+TOWNHALLS	mairie-10	Mairie du 10e	48.8718061	2.3577803	75
+TOWNHALLS	mairie-11	Mairie du 11e	48.8587211	2.3792588	75
+TOWNHALLS	mairie-12	Mairie du 12e	48.8408215	2.3882583	75
+TOWNHALLS	mairie-13	Mairie du 13e	48.8325516	2.3555391	75
+TOWNHALLS	mairie-14	Mairie du 14e	48.8330782	2.3268962	75
+TOWNHALLS	mairie-15	Mairie du 15e	48.8413463	2.3002449	75
+TOWNHALLS	mairie-16	Mairie du 16e	48.8636568	2.2764260	75
+TOWNHALLS	mairie-17	Mairie du 17e	48.8845147	2.3220414	75
+TOWNHALLS	mairie-18	Mairie du 18e	48.8920792	2.3444293	75
+TOWNHALLS	mairie-19	Mairie du 19e	48.8830019	2.3819052	75
+TOWNHALLS	mairie-20	Mairie du 20e	48.8653099	2.3994450	75
+PASSAGES	galerie-vivienne	Galerie Vivienne	48.8665350	2.3401053	60
+PASSAGES	galerie-colbert	Galerie Colbert	48.8663860	2.3388429	60
+PASSAGES	passage-panoramas	Passage des Panoramas	48.8710000	2.3416312	60
+PASSAGES	passage-jouffroy	Passage Jouffroy	48.8725858	2.3422538	60
+PASSAGES	passage-verdeau	Passage Verdeau	48.8731203	2.3422679	60
+PASSAGES	passage-choiseul	Passage Choiseul	48.8680308	2.3355368	60
+PASSAGES	galerie-vero-dodat	Galerie Véro-Dodat	48.8628215	2.3402006	60
+PASSAGES	passage-grand-cerf	Passage du Grand-Cerf	48.8647987	2.3493949	60
+PASSAGES	passage-caire	Passage du Caire	48.8678890	2.3502804	60
+PASSAGES	passage-brady	Passage Brady	48.8716134	2.3537153	60
+PASSAGES	passage-prado	Passage du Prado	48.8695428	2.3537015	60
+PASSAGES	passage-princes	Passage des Princes	48.8716136	2.3391896	60
+PASSAGES	passage-vendome	Passage Vendôme	48.8663543	2.3640849	60
+PASSAGES	passage-puteaux	Passage Puteaux	48.8730021	2.3238627	60
+PASSAGES	galerie-madeleine	Galerie de la Madeleine	48.8697010	2.3228209	60
+PASSAGES	passage-ancre	Passage de l'Ancre	48.8642815	2.3530080	60
+MONUMENTS	tour-eiffel	Tour Eiffel	48.8582603	2.2945008	100
+MONUMENTS	arc-de-triomphe	Arc de Triomphe	48.8737782	2.2950354	150
+MONUMENTS	notre-dame	Notre-Dame de Paris	48.8529371	2.3498701	120
+MONUMENTS	sacre-coeur	Sacré-Cœur	48.8867961	2.3430272	100
+MONUMENTS	pantheon	Panthéon	48.8461887	2.3460724	120
+MONUMENTS	invalides	Les Invalides	48.8559525	2.3125541	150
+MONUMENTS	pyramide-louvre	Pyramide du Louvre	48.8610132	2.3358545	75
+MONUMENTS	palais-garnier	Palais Garnier	48.8714332	2.3319654	120
+MONUMENTS	centre-pompidou	Centre Pompidou	48.8605235	2.3524395	100
+MONUMENTS	colonne-juillet	Colonne de Juillet	48.8531661	2.3691387	120
+MONUMENTS	obelisque	Obélisque de Louxor	48.8654765	2.3211306	150
+MONUMENTS	sainte-chapelle	Sainte-Chapelle	48.8553966	2.3450136	100
+MONUMENTS	conciergerie	Conciergerie	48.8559492	2.3460263	100
+MONUMENTS	grand-palais	Grand Palais	48.8661514	2.3122667	130
+MONUMENTS	petit-palais	Petit Palais	48.8667679	2.3157654	100
+MONUMENTS	musee-orsay	Musée d'Orsay	48.8599188	2.3265259	100
+MONUMENTS	tour-montparnasse	Tour Montparnasse	48.8421127	2.3219796	100
+MONUMENTS	madeleine	La Madeleine	48.8700280	2.3244655	100
+MONUMENTS	saint-sulpice	Saint-Sulpice	48.8509825	2.3348657	100
+MONUMENTS	saint-eustache	Saint-Eustache	48.8634023	2.3451777	100
+MONUMENTS	tour-saint-jacques	Tour Saint-Jacques	48.8579983	2.3489178	75
+MONUMENTS	moulin-rouge	Moulin Rouge	48.8841094	2.3323564	60
+MONUMENTS	institut-de-france	Institut de France	48.8568441	2.3371043	100
+MONUMENTS	opera-bastille	Opéra Bastille	48.8514912	2.3706641	100
+MONUMENTS	palais-luxembourg	Palais du Luxembourg	48.8485533	2.3371422	120
+MONUMENTS	arc-carrousel	Arc de Triomphe du Carrousel	48.8617276	2.3329082	75
+MONUMENTS	fontaine-saint-michel	Fontaine Saint-Michel	48.8532077	2.3437213	50
+MONUMENTS	bnf	Bibliothèque François-Mitterrand	48.8336355	2.3758389	150
+MONUMENTS	institut-monde-arabe	Institut du monde arabe	48.8489231	2.3572225	100
+MONUMENTS	philharmonie	Philharmonie de Paris	48.8919138	2.3941891	120
+PARKS	luxembourg	Jardin du Luxembourg	48.8467137	2.3363649	120
+PARKS	tuileries	Jardin des Tuileries	48.8636681	2.3266855	120
+PARKS	buttes-chaumont	Parc des Buttes-Chaumont	48.8795444	2.3838040	120
+PARKS	monceau	Parc Monceau	48.8793714	2.3088916	100
+PARKS	montsouris	Parc Montsouris	48.8222357	2.3380114	120
+PARKS	jardin-des-plantes	Jardin des Plantes	48.8440393	2.3596915	120
+PARKS	villette	Parc de la Villette	48.8934773	2.3893334	150
+PARKS	andre-citroen	Parc André-Citroën	48.8413065	2.2746384	120
+PARKS	bercy	Parc de Bercy	48.8354139	2.3821188	120
+PARKS	champ-de-mars	Champ-de-Mars	48.8561630	2.2978311	120
+PARKS	palais-royal	Jardin du Palais-Royal	48.8650062	2.3378176	75
+PARKS	belleville	Parc de Belleville	48.8715484	2.3849526	100
+PARKS	vert-galant	Square du Vert-Galant	48.8574038	2.3402065	50
+PARKS	georges-brassens	Parc Georges-Brassens	48.8314646	2.2998427	100
+PARKS	bagatelle	Parc de Bagatelle	48.8703285	2.2474017	150
+PARKS	parc-floral	Parc floral de Paris	48.8372866	2.4444216	150
+PARKS	ranelagh	Jardin du Ranelagh	48.8592641	2.2684699	100
+PARKS	martin-luther-king	Parc Martin-Luther-King	48.8911906	2.3136430	120
+PARKS	serres-auteuil	Jardin des serres d'Auteuil	48.8467064	2.2526230	100
+PARKS	square-batignolles	Square des Batignolles	48.8874810	2.3163402	75
+PARKS	trocadero	Jardins du Trocadéro	48.8613091	2.2895140	100
+PARKS	choisy	Parc de Choisy	48.8280720	2.3602842	75
+PARKS	square-temple	Square du Temple	48.8644582	2.3607531	75
+PARKS	pre-catelan	Pré Catelan	48.8649122	2.2529824	120
+PARKS	kellermann	Parc Kellermann	48.8184469	2.3552745	100
+SQUARES	concorde	Place de la Concorde	48.8654898	2.3211860	150
+SQUARES	vosges	Place des Vosges	48.8556308	2.3655346	75
+SQUARES	vendome	Place Vendôme	48.8674726	2.3294385	75
+SQUARES	bastille	Place de la Bastille	48.8526954	2.3687377	120
+SQUARES	republique	Place de la République	48.8675412	2.3639876	100
+SQUARES	nation	Place de la Nation	48.8483863	2.3958959	130
+SQUARES	etoile	Place Charles-de-Gaulle	48.8737781	2.2950367	150
+SQUARES	italie	Place d'Italie	48.8322280	2.3555468	110
+SQUARES	trocadero-place	Place du Trocadéro	48.8628766	2.2871954	120
+SQUARES	victoires	Place des Victoires	48.8657507	2.3411756	60
+SQUARES	contrescarpe	Place de la Contrescarpe	48.8444750	2.3494222	50
+SQUARES	tertre	Place du Tertre	48.8865625	2.3406466	50
+SQUARES	saint-michel	Place Saint-Michel	48.8533333	2.3437635	50
+SQUARES	dauphine	Place Dauphine	48.8565272	2.3423704	60
+SQUARES	abbesses	Place des Abbesses	48.8843986	2.3384934	50
+STATIONS	gare-du-nord	Gare du Nord	48.8809877	2.3569777	120
+STATIONS	gare-de-l-est	Gare de l'Est	48.8770979	2.3594905	120
+STATIONS	gare-de-lyon	Gare de Lyon	48.8446832	2.3737743	120
+STATIONS	gare-austerlitz	Gare d'Austerlitz	48.8424013	2.3649897	120
+STATIONS	gare-montparnasse	Gare Montparnasse	48.8400624	2.3191085	120
+STATIONS	gare-saint-lazare	Gare Saint-Lazare	48.8765300	2.3252374	120
+STATIONS	gare-bercy	Gare de Bercy	48.8391964	2.3828490	100

@@ -12,7 +12,13 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngQuad
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression.coalesce
+import org.maplibre.android.style.expressions.Expression.color
 import org.maplibre.android.style.expressions.Expression.get
+import org.maplibre.android.style.expressions.Expression.interpolate
+import org.maplibre.android.style.expressions.Expression.linear
+import org.maplibre.android.style.expressions.Expression.stop
+import org.maplibre.android.style.expressions.Expression.switchCase
+import org.maplibre.android.style.expressions.Expression.zoom
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
@@ -28,7 +34,15 @@ import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.layers.PropertyFactory.rasterFadeDuration
 import org.maplibre.android.style.layers.PropertyFactory.rasterResampling
+import org.maplibre.android.style.layers.PropertyFactory.textAnchor
+import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textField
+import org.maplibre.android.style.layers.PropertyFactory.textFont
+import org.maplibre.android.style.layers.PropertyFactory.textHaloColor
+import org.maplibre.android.style.layers.PropertyFactory.textHaloWidth
+import org.maplibre.android.style.layers.PropertyFactory.textOffset
+import org.maplibre.android.style.layers.PropertyFactory.textOpacity
+import org.maplibre.android.style.layers.PropertyFactory.textSize
 import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -46,6 +60,13 @@ private const val QUARTIERS_SOURCE_ID = "quartiers-source"
 private const val QUARTIERS_LAYER_ID = "quartiers-layer"
 private const val OUTSIDE_SOURCE_ID = "outside-source"
 private const val OUTSIDE_LAYER_ID = "outside-layer"
+private const val PLACES_SOURCE_ID = "places-source"
+private const val PLACES_DOT_LAYER_ID = "places-dots"
+private const val PLACES_LABEL_LAYER_ID = "places-labels"
+private const val NAME_PROPERTY = "name"
+private const val VISITED_PROPERTY = "visited"
+private val PLACE_VISITED_COLOR = Color.rgb(255, 193, 7)
+private val PLACE_UNVISITED_COLOR = Color.rgb(158, 158, 158)
 private const val POSITION_SOURCE_ID = "position-source"
 private const val POSITION_LAYER_ID = "position-layer"
 
@@ -81,6 +102,31 @@ fun addGameLayers(style: Style) {
         FillLayer(OUTSIDE_LAYER_ID, OUTSIDE_SOURCE_ID).withProperties(
             fillColor(Color.BLACK),
             fillOpacity(1f),
+        )
+    )
+    // Lieux des collections : visibles à travers le brouillard pour donner des
+    // destinations. Gris tant que non visités, dorés ensuite.
+    style.addSource(GeoJsonSource(PLACES_SOURCE_ID))
+    style.addLayer(
+        CircleLayer(PLACES_DOT_LAYER_ID, PLACES_SOURCE_ID).withProperties(
+            circleRadius(interpolate(linear(), zoom(), stop(11, 2.5f), stop(16, 7f))),
+            circleColor(switchCase(get(VISITED_PROPERTY), color(PLACE_VISITED_COLOR), color(PLACE_UNVISITED_COLOR))),
+            circleStrokeWidth(1.5f),
+            circleStrokeColor(Color.WHITE),
+        )
+    )
+    style.addLayer(
+        SymbolLayer(PLACES_LABEL_LAYER_ID, PLACES_SOURCE_ID).withProperties(
+            textField(get(NAME_PROPERTY)),
+            textFont(arrayOf("Noto Sans Regular")),
+            textSize(12f),
+            textOffset(arrayOf(0f, 1.2f)),
+            textAnchor(Property.TEXT_ANCHOR_TOP),
+            textColor(switchCase(get(VISITED_PROPERTY), color(PLACE_VISITED_COLOR), color(Color.WHITE))),
+            textHaloColor(Color.BLACK),
+            textHaloWidth(1.2f),
+            // Noms seulement de près, pour ne pas surcharger la carte.
+            textOpacity(interpolate(linear(), zoom(), stop(14, 0f), stop(14.5, 1f))),
         )
     )
     style.addSource(GeoJsonSource(POSITION_SOURCE_ID))
@@ -120,6 +166,16 @@ fun updateFog(style: Style, fog: FogImage) {
         ),
         QUARTIERS_LAYER_ID,
     )
+}
+
+fun updatePlaces(style: Style, markers: List<PlaceMarker>) {
+    val features = markers.map { marker ->
+        Feature.fromGeometry(Point.fromLngLat(marker.place.position.lon, marker.place.position.lat)).apply {
+            addStringProperty(NAME_PROPERTY, marker.place.name)
+            addBooleanProperty(VISITED_PROPERTY, marker.visited)
+        }
+    }
+    style.getSourceAs<GeoJsonSource>(PLACES_SOURCE_ID)?.setGeoJson(FeatureCollection.fromFeatures(features))
 }
 
 // Contours fins des 80 quartiers, pour se repérer dans le jeu.

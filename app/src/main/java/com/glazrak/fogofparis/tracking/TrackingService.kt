@@ -50,7 +50,7 @@ class TrackingService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val locationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val repository by lazy { VisitedCellsRepository.create(this) }
-    private val medalNotifier by lazy { MedalNotifier(this, repository) }
+    private val rewardNotifier by lazy { RewardNotifier(this, repository) }
     private val processingMutex = Mutex()
 
     private var previousFix: LocationFix? = null
@@ -161,9 +161,9 @@ class TrackingService : Service() {
         if (cell == lastRecordedCell) return
         lastRecordedCell = cell
         try {
-            medalNotifier.ensureLoaded(geo)
+            rewardNotifier.ensureLoaded(geo)
             val isNew = repository.recordVisit(cell, timeMillis = fix.timeMillis)
-            if (isNew) medalNotifier.onNewCell(cell, geo)
+            if (isNew) rewardNotifier.onNewCell(cell, geo)
         } catch (e: Exception) {
             Log.e(TAG, "Could not save visited cell $cell", e)
         }

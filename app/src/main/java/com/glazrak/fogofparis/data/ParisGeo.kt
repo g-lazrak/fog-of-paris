@@ -3,7 +3,11 @@ package com.glazrak.fogofparis.data
 import android.content.Context
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
+import com.glazrak.fogofparis.domain.CollectionSet
+import com.glazrak.fogofparis.domain.DEFAULT_PLACE_RADIUS_M
 import com.glazrak.fogofparis.domain.GeoPosition
+import com.glazrak.fogofparis.domain.Place
+import com.glazrak.fogofparis.domain.PlaceIndex
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierIndex
 import com.glazrak.fogofparis.domain.Ring
@@ -20,11 +24,15 @@ import org.maplibre.geojson.Polygon
 const val ARRONDISSEMENTS_ASSET = "arrondissements.geojson"
 const val QUARTIERS_ASSET = "quartiers.geojson"
 
+// Lieux des collections, extraits une fois d'OpenStreetMap (voir tools/places/).
+const val PLACES_ASSET = "places.geojson"
+
 // Toute la géographie du jeu, calculée une fois.
 class ParisGeo(
     val boundary: CityBoundary,
     val cells: CityCells,
     val quartiers: QuartierIndex,
+    val places: PlaceIndex,
 )
 
 // Lu une seule fois par processus (~ une seconde au plus), puis partagé entre
@@ -40,7 +48,8 @@ object ParisGeoCache {
     private fun load(context: Context): ParisGeo {
         val boundary = parisBoundaryFromGeoJson(readAsset(context, ARRONDISSEMENTS_ASSET))
         val quartiers = quartiersFromGeoJson(readAsset(context, QUARTIERS_ASSET))
-        return ParisGeo(boundary, CityCells.of(boundary), QuartierIndex(quartiers))
+        val places = placesFromGeoJson(readAsset(context, PLACES_ASSET))
+        return ParisGeo(boundary, CityCells.of(boundary), QuartierIndex(quartiers), PlaceIndex(places))
     }
 
     private fun readAsset(context: Context, name: String): String =
@@ -73,6 +82,24 @@ fun quartiersFromGeoJson(json: String): List<Quartier> =
             cells = CityCells.of(boundary),
         )
     }.sortedBy { it.id }
+
+// Chaque lieu est un point avec ses propriétés "id", "name" et "set"
+// (nom d'une CollectionSet, ex. "BRIDGES").
+fun placesFromGeoJson(json: String): List<Place> =
+    FeatureCollection.fromJson(json).features().orEmpty().mapNotNull { feature ->
+        val point = feature.geometry() as? org.maplibre.geojson.Point ?: return@mapNotNull null
+        Place(
+            id = feature.getStringProperty("id"),
+            name = feature.getStringProperty("name"),
+            set = CollectionSet.valueOf(feature.getStringProperty("set")),
+            position = GeoPosition(lat = point.latitude(), lon = point.longitude()),
+            radiusMeters = if (feature.hasProperty("radius")) {
+                feature.getNumberProperty("radius").toDouble()
+            } else {
+                DEFAULT_PLACE_RADIUS_M
+            },
+        )
+    }
 
 private fun polygonsOf(json: String): List<Polygon> =
     FeatureCollection.fromJson(json).features().orEmpty().flatMap { feature ->

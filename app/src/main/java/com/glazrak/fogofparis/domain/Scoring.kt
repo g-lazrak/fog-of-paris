@@ -74,14 +74,18 @@ fun medalDates(sortedVisitTimes: List<Long>, totalCells: Int): Map<Medal, Long> 
     }.toMap()
 
 // Points : 1 par cellule révélée dans Paris + 100 par médaille (cumulées :
-// un quartier en Or rapporte Bronze + Argent + Or = 300).
-fun totalPoints(revealedCellsInParis: Int, progress: List<QuartierProgress>): Int =
-    revealedCellsInParis * POINTS_PER_CELL + progress.sumOf { it.medalDates.size } * POINTS_PER_MEDAL
+// un quartier en Or rapporte Bronze + Argent + Or = 300) + les collections
+// (50 par lieu, 500 par série complète).
+fun totalPoints(
+    revealedCellsInParis: Int,
+    quartiers: List<QuartierProgress>,
+    collections: List<CollectionProgress>,
+): Int =
+    revealedCellsInParis * POINTS_PER_CELL +
+        quartiers.sumOf { it.medalDates.size } * POINTS_PER_MEDAL +
+        collectionPoints(collections)
 
-// La médaille qui vient d'être gagnée en passant de `before` à `after`
-// cellules révélées, s'il y en a une.
-fun newMedal(before: Int, after: Int, totalCells: Int): Medal? =
-    Medal.entries.lastOrNull { medal ->
-        val needed = cellsNeededFor(medal, totalCells)
-        needed in (before + 1)..after
-    }
+// Les médailles gagnées en passant de `before` à `after` cellules révélées
+// (plusieurs d'un coup possible dans un tout petit quartier).
+fun medalsCrossed(before: Int, after: Int, totalCells: Int): List<Medal> =
+    Medal.entries.filter { medal -> cellsNeededFor(medal, totalCells) in (before + 1)..after }

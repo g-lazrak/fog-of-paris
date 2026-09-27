@@ -14,7 +14,7 @@
     <string name="status_paused_still">En pause · immobile</string>
     <string name="status_paused_vehicle">En pause · en véhicule</string>
     <string name="status_paused_bicycle">En pause · à vélo</string>
-    <string name="progress_label">Paris dévoilé : %1$s %% · %2$s pts</string>
+    <string name="progress_label">%1$s · %2$s %% · %3$s pts</string>
     <string name="recenter">Me recentrer</string>
     <string name="open_quartiers">Voir les quartiers</string>
     <string name="back">Retour</string>
@@ -31,7 +31,23 @@
     <string name="medal_silver">Argent</string>
     <string name="medal_gold">Or</string>
     <string name="medal_mastered">Maîtrisé</string>
-    <string name="medal_channel_name">Médailles</string>
+    <string name="reward_channel_name">Récompenses</string>
+    <string name="set_bridges">Ponts de la Seine</string>
+    <string name="set_townhalls">Mairies</string>
+    <string name="set_passages">Passages couverts</string>
+    <string name="set_monuments">Monuments</string>
+    <string name="set_parks">Parcs et jardins</string>
+    <string name="set_squares">Grandes places</string>
+    <string name="set_stations">Grandes gares</string>
+    <string name="place_found_title">%1$s %2$s</string>
+    <string name="place_found_text">%1$s : %2$d / %3$d</string>
+    <string name="set_complete_title">%1$s Série complète : %2$s !</string>
+    <string name="set_complete_text">+%1$d points</string>
+    <string name="level_up_title">⭐ Nouveau titre : %1$s</string>
+    <string name="level_up_text">Niveau %1$d atteint</string>
     <string name="medal_notification_title">%1$s %2$s : %3$s</string>
     <string name="medal_notification_text">%1$d %% du quartier révélé</string>
+    <string name="level_number">Niveau %1$d</string>
+    <string name="level_next">Encore %1$s pts pour devenir %2$s</string>
+    <string name="collections_title">Collections</string>
 </resources>

@@ -14,6 +14,11 @@ import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
+import com.glazrak.fogofparis.domain.CollectionProgress
+import com.glazrak.fogofparis.domain.LevelProgress
+import com.glazrak.fogofparis.domain.Place
+import com.glazrak.fogofparis.domain.collectionProgress
+import com.glazrak.fogofparis.domain.levelFor
 import com.glazrak.fogofparis.domain.FOG_PIXELS_PER_CELL
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.Quartier
@@ -50,7 +55,11 @@ data class GameSummary(
     val points: Int,
 ) {
     val percent: Double get() = if (totalCells == 0) 0.0 else revealedCells * 100.0 / totalCells
+    val level: LevelProgress get() = levelFor(points)
 }
+
+// Un lieu de collection à afficher sur la carte.
+data class PlaceMarker(val place: Place, val visited: Boolean)
 
 // Où déplacer la carte. Le numéro permet de redemander la même chose.
 sealed interface CameraMove {
@@ -104,13 +113,22 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val collections: StateFlow<List<CollectionProgress>> =
+        combine(visitedCells, geo.filterNotNull()) { cells, parisGeo -> collectionProgress(parisGeo.places.places, cells) }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val placeMarkers: StateFlow<List<PlaceMarker>> = collections
+        .map { sets -> sets.flatMap { set -> set.places.map { PlaceMarker(it, it.id in set.visitedIds) } } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val summary: StateFlow<GameSummary?> =
-        combine(visitedCells, geo.filterNotNull(), quartierProgress) { cells, parisGeo, progress ->
+        combine(visitedCells, geo.filterNotNull(), quartierProgress, collections) { cells, parisGeo, progress, sets ->
             val revealed = parisGeo.cells.countInside(cells)
             GameSummary(
                 revealedCells = revealed,
                 totalCells = parisGeo.cells.totalCells,
-                points = totalPoints(revealed, progress),
+                points = totalPoints(revealed, progress, sets),
             )
         }.flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

@@ -67,14 +67,16 @@ class ScoringTest {
     @Test
     fun points_are_cells_plus_one_hundred_per_cumulative_medal() {
         val progress = index.progress(visitsInA(50)) // Or dans A = 3 médailles
-        assertEquals(50 + 300, totalPoints(revealedCellsInParis = 50, progress = progress))
+        assertEquals(50 + 300, totalPoints(revealedCellsInParis = 50, quartiers = progress, collections = emptyList()))
     }
 
     @Test
     fun new_medal_is_detected_only_when_crossing_a_threshold() {
-        assertEquals(Medal.BRONZE, newMedal(before = 9, after = 10, totalCells = 100))
-        assertNull(newMedal(before = 10, after = 11, totalCells = 100))
-        assertEquals(Medal.MASTERED, newMedal(before = 74, after = 75, totalCells = 100))
+        assertEquals(listOf(Medal.BRONZE), medalsCrossed(before = 9, after = 10, totalCells = 100))
+        assertEquals(emptyList<Medal>(), medalsCrossed(before = 10, after = 11, totalCells = 100))
+        assertEquals(listOf(Medal.MASTERED), medalsCrossed(before = 74, after = 75, totalCells = 100))
+        // Quartier de 2 cellules : la 1re cellule fait passer Bronze, Argent et Or d'un coup.
+        assertEquals(listOf(Medal.BRONZE, Medal.SILVER, Medal.GOLD), medalsCrossed(0, 1, totalCells = 2))
     }
 
     @Test
