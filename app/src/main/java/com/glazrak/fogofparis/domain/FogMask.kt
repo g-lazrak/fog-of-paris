@@ -5,7 +5,9 @@ import kotlin.math.floor
 import kotlin.math.sqrt
 
 // Opacité du brouillard (0 = transparent, 255 = noir complet).
-const val FOG_ALPHA = 179 // ≈ 70 %
+// ≈ 82 % : la carte « fiord » est déjà sombre, il faut un brouillard plus dense
+// pour que les zones révélées ressortent nettement.
+const val FOG_ALPHA = 210
 
 // Pixels par cellule dans l'image du brouillard (4 → un pixel ≈ 12 m).
 const val FOG_PIXELS_PER_CELL = 4

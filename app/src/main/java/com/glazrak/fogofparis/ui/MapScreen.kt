@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.ui.theme.Night
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -253,6 +255,8 @@ private fun SummaryBanner(summary: GameSummary, onClick: () -> Unit, modifier: M
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         contentColor = MaterialTheme.colorScheme.onSurface,
+        // Le brouillard est du même bleu nuit : le bord détache le bandeau.
+        border = BorderStroke(1.dp, Night.BorderStrong),
         modifier = modifier,
     ) {
         Row(

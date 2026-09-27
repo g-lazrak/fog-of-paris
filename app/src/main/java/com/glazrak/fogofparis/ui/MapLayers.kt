@@ -52,7 +52,7 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 
-const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord"
 
 private const val FOG_SOURCE_ID = "fog-source"
 private const val FOG_LAYER_ID = "fog-layer"

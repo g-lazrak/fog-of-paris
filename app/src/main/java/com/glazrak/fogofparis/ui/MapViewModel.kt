@@ -282,11 +282,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
+// Même bleu nuit que les menus (Night.Background), sans l'opacité.
+private const val FOG_RGB = 0x0B1020
+
 private fun buildFogImage(cells: Set<CellId>, city: CityCells): FogImage {
     val extent = city.extent
     val alpha = fogAlphaMask(cells, extent)
-    // Noir avec l'opacité calculée : couleur ARGB = alpha << 24.
-    val colors = IntArray(alpha.size) { alpha[it] shl 24 }
+    // Bleu nuit (fond de l'app) avec l'opacité calculée : couleur ARGB = alpha << 24 | RGB.
+    val colors = IntArray(alpha.size) { (alpha[it] shl 24) or FOG_RGB }
     val bitmap = Bitmap.createBitmap(
         colors,
         extent.width * FOG_PIXELS_PER_CELL,
