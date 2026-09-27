@@ -115,7 +115,7 @@ Personal project, not published on the Play Store for now.
      owner reviews the list.
    - **Points are fixed** (owner, 2026-09-27): never multipliers, "double
      points" events or time-limited bonuses. No proximity vibrations either.
-   - Phase 8 (approved 2026-09-27): "Paris la nuit" redesign following the
+   - Phase 8 (built 2026-09-27; treasure list awaiting the owner's review): "Paris la nuit" redesign following the
      mockup https://claude.ai/artifact/72UCGjYbbrcT5PaRvgRUxE (tabs Carte ·
      Progrès · Quartiers · Collections, quartier mosaic, collection cards,
      new-title celebration), plus: nearest-unvisited-place compass card;
