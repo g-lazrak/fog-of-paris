@@ -21,7 +21,6 @@ import com.glazrak.fogofparis.domain.POINTS_PER_CELL
 import com.glazrak.fogofparis.domain.cellsNeededFor
 import com.glazrak.fogofparis.domain.POINTS_PER_COMPLETED_SET
 import com.glazrak.fogofparis.domain.POINTS_PER_MEDAL
-import com.glazrak.fogofparis.domain.POINTS_PER_PLACE
 import com.glazrak.fogofparis.domain.collectionProgress
 import com.glazrak.fogofparis.domain.levelFor
 import com.glazrak.fogofparis.domain.medalsCrossed
@@ -100,10 +99,17 @@ class RewardNotifier(
 
         for (place in geo.places.placesNear(cell)) {
             if (!state.visitedPlaceIds.add(place.id)) continue
-            state.points += POINTS_PER_PLACE
+            state.points += place.set.pointsPerPlace
             val setPlaces = geo.places.places.filter { it.set == place.set }
             val visitedInSet = setPlaces.count { it.id in state.visitedPlaceIds }
-            if (visitedInSet == setPlaces.size) {
+            if (place.set.hidden) {
+                // Trésor : on révèle enfin son nom. Pas de bonus de série.
+                notify(
+                    id = PLACE_ID,
+                    title = context.getString(R.string.treasure_found_title, place.name),
+                    text = context.getString(R.string.treasure_found_text, place.set.pointsPerPlace, visitedInSet, setPlaces.size),
+                )
+            } else if (visitedInSet == setPlaces.size) {
                 state.points += POINTS_PER_COMPLETED_SET
                 notify(
                     id = SET_ID_BASE + place.set.ordinal,
@@ -186,4 +192,5 @@ fun collectionNameRes(set: CollectionSet): Int = when (set) {
     CollectionSet.PARKS -> R.string.set_parks
     CollectionSet.SQUARES -> R.string.set_squares
     CollectionSet.STATIONS -> R.string.set_stations
+    CollectionSet.TREASURES -> R.string.set_treasures
 }

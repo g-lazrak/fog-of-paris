@@ -131,7 +131,7 @@ private fun SetCard(collection: CollectionProgress, isOpen: Boolean, onClick: ()
             )
         }
         Text(stringResource(collectionNameRes(set)), style = MaterialTheme.typography.titleMedium, color = Night.Text)
-        if (collection.isComplete) {
+        if (collection.isComplete && !set.hidden) {
             Text(
                 stringResource(R.string.set_complete_badge, POINTS_PER_COMPLETED_SET),
                 style = MaterialTheme.typography.labelMedium,
@@ -152,13 +152,15 @@ private fun PlaceList(collection: CollectionProgress, onShowPlace: (Place) -> Un
             .sortedWith(compareBy({ it.id !in collection.visitedIds }, { it.name }))
             .forEach { place ->
                 val visited = place.id in collection.visitedIds
+                // Trésor pas encore trouvé : ni nom ni position, seulement l'indice.
+                val secret = place.set.hidden && !visited
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 40.dp)
-                        .clickable { onShowPlace(place) }
-                        .padding(horizontal = 8.dp),
+                        .then(if (secret) Modifier else Modifier.clickable { onShowPlace(place) })
+                        .padding(horizontal = 8.dp, vertical = if (secret) 6.dp else 0.dp),
                 ) {
                     Box(
                         Modifier
@@ -166,12 +168,16 @@ private fun PlaceList(collection: CollectionProgress, onShowPlace: (Place) -> Un
                             .clip(CircleShape)
                             .background(if (visited) color else Night.Started),
                     )
-                    Text(
-                        place.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (visited) Night.Text else Night.TextMuted,
-                        modifier = Modifier.padding(start = 12.dp),
-                    )
+                    Column(modifier = Modifier.padding(start = 12.dp)) {
+                        Text(
+                            if (secret) stringResource(R.string.treasure_unknown) else place.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (visited) Night.Text else Night.TextMuted,
+                        )
+                        if (secret && place.hint != null) {
+                            Text(place.hint, style = MaterialTheme.typography.bodySmall, color = Night.TextSoft)
+                        }
+                    }
                 }
             }
     }

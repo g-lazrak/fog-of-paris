@@ -49,6 +49,24 @@ class CollectionsAndLevelsTest {
     }
 
     @Test
+    fun treasures_give_150_points_each_and_no_set_bonus() {
+        val treasure = Place("t", "Rue des Degrés", CollectionSet.TREASURES, GeoPosition(48.8694, 2.3507), 40.0, hint = "…")
+        val progress = collectionProgress(listOf(treasure), setOf(cellOf(treasure)))
+        assertTrue(progress.single().isComplete)
+        assertEquals(POINTS_PER_TREASURE, collectionPoints(progress))
+    }
+
+    @Test
+    fun hidden_treasures_are_never_suggested_and_stay_hidden_until_found() {
+        val treasure = Place("t", "Rue des Degrés", CollectionSet.TREASURES, GeoPosition(48.8694, 2.3507), 40.0, hint = "…")
+        val here = GeoPosition(48.8690, 2.3500)
+        assertNull(nearestUnvisited(listOf(treasure), emptySet(), here))
+        assertFalse(isRevealedPlace(treasure, emptySet()))
+        assertTrue(isRevealedPlace(treasure, setOf("t")))
+        assertTrue(isRevealedPlace(pontNeuf, emptySet()))
+    }
+
+    @Test
     fun place_index_finds_places_around_a_cell() {
         val index = PlaceIndex(listOf(pontNeuf, pantheon))
         assertEquals(listOf(pontNeuf), index.placesNear(cellOf(pontNeuf)))

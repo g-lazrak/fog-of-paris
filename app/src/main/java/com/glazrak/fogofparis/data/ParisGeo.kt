@@ -27,6 +27,9 @@ const val QUARTIERS_ASSET = "quartiers.geojson"
 // Lieux des collections, extraits une fois d'OpenStreetMap (voir tools/places/).
 const val PLACES_ASSET = "places.geojson"
 
+// Trésors cachés, un par quartier (voir tools/places/treasures.tsv).
+const val TREASURES_ASSET = "treasures.geojson"
+
 // Toute la géographie du jeu, calculée une fois.
 class ParisGeo(
     val boundary: CityBoundary,
@@ -48,7 +51,8 @@ object ParisGeoCache {
     private fun load(context: Context): ParisGeo {
         val boundary = parisBoundaryFromGeoJson(readAsset(context, ARRONDISSEMENTS_ASSET))
         val quartiers = quartiersFromGeoJson(readAsset(context, QUARTIERS_ASSET))
-        val places = placesFromGeoJson(readAsset(context, PLACES_ASSET))
+        val places = placesFromGeoJson(readAsset(context, PLACES_ASSET)) +
+            placesFromGeoJson(readAsset(context, TREASURES_ASSET))
         return ParisGeo(boundary, CityCells.of(boundary), QuartierIndex(quartiers), PlaceIndex(places))
     }
 
@@ -84,7 +88,7 @@ fun quartiersFromGeoJson(json: String): List<Quartier> =
     }.sortedBy { it.id }
 
 // Chaque lieu est un point avec ses propriétés "id", "name" et "set"
-// (nom d'une CollectionSet, ex. "BRIDGES").
+// (nom d'une CollectionSet, ex. "BRIDGES"), et en option "radius" et "hint".
 fun placesFromGeoJson(json: String): List<Place> =
     FeatureCollection.fromJson(json).features().orEmpty().mapNotNull { feature ->
         val point = feature.geometry() as? org.maplibre.geojson.Point ?: return@mapNotNull null
@@ -98,6 +102,7 @@ fun placesFromGeoJson(json: String): List<Place> =
             } else {
                 DEFAULT_PLACE_RADIUS_M
             },
+            hint = if (feature.hasProperty("hint")) feature.getStringProperty("hint") else null,
         )
     }
 

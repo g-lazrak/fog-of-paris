@@ -16,6 +16,9 @@ import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
 import com.glazrak.fogofparis.domain.CollectionProgress
+import com.glazrak.fogofparis.domain.CollectionSet
+import com.glazrak.fogofparis.domain.isRevealedPlace
+import com.glazrak.fogofparis.domain.latLonToCell
 import com.glazrak.fogofparis.domain.Level
 import com.glazrak.fogofparis.domain.LevelProgress
 import com.glazrak.fogofparis.domain.PlaceDirection
@@ -126,9 +129,25 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // Les trésors n'apparaissent sur la carte qu'une fois trouvés.
     val placeMarkers: StateFlow<List<PlaceMarker>> = collections
-        .map { sets -> sets.flatMap { set -> set.places.map { PlaceMarker(it, it.id in set.visitedIds) } } }
+        .map { sets ->
+            sets.flatMap { set ->
+                set.places.filter { isRevealedPlace(it, set.visitedIds) }.map { PlaceMarker(it, it.id in set.visitedIds) }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Le trésor de chaque quartier (un par quartier) et s'il a été trouvé.
+    val treasureByQuartier: StateFlow<Map<Int, PlaceMarker>> =
+        combine(geo.filterNotNull(), collections) { parisGeo, sets ->
+            val treasures = sets.firstOrNull { it.set == CollectionSet.TREASURES } ?: return@combine emptyMap()
+            treasures.places.mapNotNull { place ->
+                val quartier = parisGeo.quartiers.quartierOf(latLonToCell(place.position.lat, place.position.lon))
+                quartier?.let { it.id to PlaceMarker(place, place.id in treasures.visitedIds) }
+            }.toMap()
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val summary: StateFlow<GameSummary?> =
         combine(visitedCells, geo.filterNotNull(), quartierProgress, collections) { cells, parisGeo, progress, sets ->
@@ -138,8 +157,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 totalCells = parisGeo.cells.totalCells,
                 points = totalPoints(revealed, progress, sets),
                 medalledQuartiers = progress.count { it.medal != null },
-                visitedPlaces = sets.sumOf { it.visitedCount },
-                totalPlaces = sets.sumOf { it.places.size },
+                // Les 145 lieux visibles ; les trésors ont leur propre compteur (Collections).
+                visitedPlaces = sets.filterNot { it.set.hidden }.sumOf { it.visitedCount },
+                totalPlaces = sets.filterNot { it.set.hidden }.sumOf { it.places.size },
             )
         }.flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

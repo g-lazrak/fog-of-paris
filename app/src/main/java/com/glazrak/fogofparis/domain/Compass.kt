@@ -29,8 +29,9 @@ fun bearingDegrees(from: GeoPosition, to: GeoPosition): Double {
     return (degrees + 360) % 360
 }
 
+// Les trésors cachés ne sont jamais proposés : ils doivent rester une surprise.
 fun nearestUnvisited(places: List<Place>, visitedIds: Set<String>, from: GeoPosition): PlaceDirection? =
     places.asSequence()
-        .filter { it.id !in visitedIds }
+        .filter { it.id !in visitedIds && !it.set.hidden }
         .map { PlaceDirection(it, distanceMeters(from, it.position), bearingDegrees(from, it.position)) }
         .minByOrNull { it.distanceMeters }

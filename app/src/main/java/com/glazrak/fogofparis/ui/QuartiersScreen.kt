@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glazrak.fogofparis.R
 import com.glazrak.fogofparis.domain.ArrondissementBadge
+import com.glazrak.fogofparis.domain.CollectionSet
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.arrondissementBadges
 import com.glazrak.fogofparis.domain.Medal
@@ -68,6 +69,7 @@ import kotlin.math.cos
 @Composable
 fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit) {
     val progress by viewModel.quartierProgress.collectAsStateWithLifecycle()
+    val treasures by viewModel.treasureByQuartier.collectAsStateWithLifecycle()
     if (progress.isEmpty()) return
     // Par défaut, le quartier le plus avancé : c'est lui qu'on a envie de regarder.
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -97,7 +99,7 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
                 LegendItem(Night.Started, stringResource(R.string.legend_started))
             }
         }
-        SelectedQuartierCard(selected, onShow = { onShowQuartier(selected.quartier) })
+        SelectedQuartierCard(selected, treasures[selected.quartier.id], onShow = { onShowQuartier(selected.quartier) })
         val badges = remember(progress) { arrondissementBadges(progress).associateBy { it.arrondissement } }
         Column {
             SectionLabel(stringResource(R.string.badges_title))
@@ -191,7 +193,7 @@ private class MosaicBounds(val west: Double, val east: Double, val south: Double
 }
 
 @Composable
-private fun SelectedQuartierCard(progress: QuartierProgress, onShow: () -> Unit) {
+private fun SelectedQuartierCard(progress: QuartierProgress, treasure: PlaceMarker?, onShow: () -> Unit) {
     val context = LocalContext.current
     val medal = progress.medal
     val accent = medal?.color ?: Night.TextMuted
@@ -236,6 +238,7 @@ private fun SelectedQuartierCard(progress: QuartierProgress, onShow: () -> Unit)
         }
         // Barre pleine à 75 % : la médaille « Maîtrisé », le maximum réaliste.
         NightProgressBar((progress.percent / Medal.MASTERED.thresholdPercent).toFloat(), medal?.color ?: Night.Started, height = 8.dp)
+        treasure?.let { TreasureLine(it) }
         Button(
             onClick = onShow,
             colors = ButtonDefaults.buttonColors(containerColor = Night.Text, contentColor = Night.Background),
@@ -244,6 +247,23 @@ private fun SelectedQuartierCard(progress: QuartierProgress, onShow: () -> Unit)
         ) {
             Icon(painterResource(R.drawable.ic_tab_map), contentDescription = null, modifier = Modifier.size(18.dp))
             Text(stringResource(R.string.show_on_map), modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+// Le trésor du quartier : son indice tant qu'il est caché, son nom une fois trouvé.
+@Composable
+private fun TreasureLine(treasure: PlaceMarker) {
+    val color = CollectionSet.TREASURES.color
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        IconBadge(R.drawable.ic_treasure, if (treasure.visited) color else Night.TextMuted, size = 36.dp)
+        Column(modifier = Modifier.weight(1f)) {
+            SectionLabel(stringResource(R.string.treasure_hint_label))
+            if (treasure.visited) {
+                Text(treasure.place.name, style = MaterialTheme.typography.titleMedium, color = color)
+            } else {
+                Text(treasure.place.hint.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Night.TextSoft)
+            }
         }
     }
 }

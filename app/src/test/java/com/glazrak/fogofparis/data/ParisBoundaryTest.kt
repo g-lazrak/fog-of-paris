@@ -46,9 +46,24 @@ class ParisBoundaryTest {
         val places = placesFromGeoJson(File("src/main/assets/$PLACES_ASSET").readText())
         assertEquals(145, places.size)
         assertEquals(places.size, places.map { it.id }.toSet().size)
-        assertEquals(CollectionSet.entries.toSet(), places.map { it.set }.toSet())
+        // Les trésors sont dans leur propre fichier.
+        assertEquals(CollectionSet.entries.filterNot { it.hidden }.toSet(), places.map { it.set }.toSet())
         val outside = places.filterNot { paris.contains(it.position) }.map { it.name }
         assertTrue("Places outside Paris: $outside", outside.isEmpty())
+    }
+
+    @Test
+    fun exactly_one_hidden_treasure_per_quartier_each_with_a_hint() {
+        val treasures = placesFromGeoJson(File("src/main/assets/$TREASURES_ASSET").readText())
+        assertEquals(80, treasures.size)
+        assertTrue(treasures.all { it.set == CollectionSet.TREASURES && !it.hint.isNullOrBlank() })
+        val quartierOf = treasures.associate { t -> t.id to quartiers.firstOrNull { it.boundary.contains(t.position) }?.id }
+        val outside = quartierOf.filterValues { it == null }.keys
+        assertTrue("Treasures outside every quartier: $outside", outside.isEmpty())
+        val perQuartier = quartierOf.values.groupingBy { it }.eachCount()
+        val doubles = perQuartier.filterValues { it > 1 }
+        assertTrue("Quartiers with several treasures: $doubles", doubles.isEmpty())
+        assertEquals((1..80).toSet(), perQuartier.keys)
     }
 
     @Test

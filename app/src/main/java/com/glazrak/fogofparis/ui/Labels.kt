@@ -39,6 +39,7 @@ val CollectionSet.icon: Int
         CollectionSet.PARKS -> R.drawable.ic_set_parks
         CollectionSet.SQUARES -> R.drawable.ic_set_squares
         CollectionSet.STATIONS -> R.drawable.ic_set_stations
+        CollectionSet.TREASURES -> R.drawable.ic_treasure
     }
 
 val CollectionSet.color: Color
@@ -50,6 +51,7 @@ val CollectionSet.color: Color
         CollectionSet.PARKS -> Night.Teal
         CollectionSet.SQUARES -> Color(0xFFB7BDC6)
         CollectionSet.STATIONS -> Color(0xFFE8A05C)
+        CollectionSet.TREASURES -> Color(0xFF7FD6E8) // bleu diamant
     }
 
 fun Cardinal.label(context: Context): String = context.getString(

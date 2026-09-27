@@ -4,7 +4,9 @@ import kotlin.math.ceil
 
 // Collections de lieux à visiter (règles validées par le propriétaire, voir CLAUDE.md).
 
-enum class CollectionSet(val emoji: String) {
+// `hidden` : série secrète (trésors), jamais montrée sur la carte ni proposée
+// comme destination tant que le lieu n'est pas trouvé. `pointsPerPlace` fixe.
+enum class CollectionSet(val emoji: String, val hidden: Boolean = false, val pointsPerPlace: Int = POINTS_PER_PLACE) {
     BRIDGES("🌉"),
     TOWNHALLS("🏛️"),
     PASSAGES("🛍️"),
@@ -12,6 +14,8 @@ enum class CollectionSet(val emoji: String) {
     PARKS("🌳"),
     SQUARES("⛲"),
     STATIONS("🚉"),
+    // Un trésor caché par quartier (80), avec un indice. Pas de bonus de série.
+    TREASURES("💎", hidden = true, pointsPerPlace = POINTS_PER_TREASURE),
 }
 
 data class Place(
@@ -23,10 +27,13 @@ data class Place(
     // un pont (il faut le traverser), grande pour une place à rond-point où
     // les trottoirs sont loin du centre (Étoile, Concorde…).
     val radiusMeters: Double = DEFAULT_PLACE_RADIUS_M,
+    // Indice affiché tant qu'un trésor n'est pas trouvé.
+    val hint: String? = null,
 )
 
 const val DEFAULT_PLACE_RADIUS_M = 75.0
 const val POINTS_PER_PLACE = 50
+const val POINTS_PER_TREASURE = 150
 const val POINTS_PER_COMPLETED_SET = 500
 
 // Les cellules dont le centre est à moins de `radiusMeters` du lieu : en
@@ -68,7 +75,15 @@ fun collectionProgress(places: List<Place>, visitedCells: Set<CellId>): List<Col
 }
 
 fun collectionPoints(progress: List<CollectionProgress>): Int =
-    progress.sumOf { it.visitedCount * POINTS_PER_PLACE + (if (it.isComplete) POINTS_PER_COMPLETED_SET else 0) }
+    progress.sumOf { it.visitedCount * it.set.pointsPerPlace + completionBonus(it) }
+
+// +500 par série complète, sauf les trésors (règle du propriétaire : pas de bonus de série).
+fun completionBonus(progress: CollectionProgress): Int =
+    if (progress.isComplete && !progress.set.hidden) POINTS_PER_COMPLETED_SET else 0
+
+// Les lieux qu'on peut montrer ou proposer : tous, sauf les trésors pas encore trouvés.
+fun isRevealedPlace(place: Place, visitedIds: Set<String>): Boolean =
+    !place.set.hidden || place.id in visitedIds
 
 // Date de découverte de chaque lieu visité : la première visite d'une des
 // cellules qui le valident. Sert à la liste « Derniers lieux découverts ».

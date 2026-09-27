@@ -39,6 +39,12 @@
     <string name="set_parks">Parcs et jardins</string>
     <string name="set_squares">Grandes places</string>
     <string name="set_stations">Grandes gares</string>
+    <string name="set_treasures">Trésors cachés</string>
+    <string name="treasure_found_title">💎 Trésor trouvé : %1$s</string>
+    <string name="treasure_found_text">+%1$d pts · %2$d / %3$d trésors</string>
+    <!-- « \? » : un « ? » en début de texte serait pris pour une référence Android. -->
+    <string name="treasure_unknown">\?\?\?</string>
+    <string name="treasure_hint_label">Trésor caché du quartier</string>
     <string name="place_found_title">%1$s %2$s</string>
     <string name="place_found_text">%1$s : %2$d / %3$d</string>
     <string name="set_complete_title">%1$s Série complète : %2$s !</string>
