@@ -106,8 +106,17 @@ Personal project, not published on the Play Store for now.
      Touriste 3 500, Arpenteur 7 000, Explorateur 12 000, Parisien 20 000,
      Cartographe 30 000, Baron Haussmann 45 000.
    - Quiet notifications for new place, completed set, new title.
-   - Next (approved, not started): dark "night map" menu redesign (Paris mosaic,
-     progress ring, trophy cabinet, tabs, animations).
+   - **Points are fixed** (owner, 2026-09-27): never multipliers, "double
+     points" events or time-limited bonuses. No proximity vibrations either.
+   - Phase 8 (approved 2026-09-27): "Paris la nuit" redesign following the
+     mockup https://claude.ai/artifact/72UCGjYbbrcT5PaRvgRUxE (tabs Carte ·
+     Progrès · Quartiers · Collections, quartier mosaic, collection cards,
+     new-title celebration), plus: nearest-unvisited-place compass card;
+     nearby-place alert behind a settings switch (off by default; when on it
+     may vibrate; only fires while walking on familiar ground, i.e. few new
+     cells revealed recently, never while exploring new streets); hidden
+     treasures (secret places not shown on the map); arrondissement badges
+     (all 4 quartiers at bronze); a darker map style.
 
 ---
 
