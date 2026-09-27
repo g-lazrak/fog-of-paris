@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.cellsNeededFor
 import com.glazrak.fogofparis.ui.theme.Night
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 
@@ -73,6 +75,8 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
     if (progress.isEmpty()) return
     // Par défaut, le quartier le plus avancé : c'est lui qu'on a envie de regarder.
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
     val selected = progress.firstOrNull { it.quartier.id == selectedId } ?: progress.maxBy { it.percent }
     val medalCounts = Medal.entries.associateWith { medal -> progress.count { it.medal == medal } }
 
@@ -81,7 +85,7 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
         modifier = Modifier
             .fillMaxSize()
             .background(Night.Background)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
     ) {
@@ -113,7 +117,11 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
             ArrondissementRow(
                 arrondissement, quartiers.sortedBy { it.quartier.id }, selected.quartier.id,
                 badge = badges[arrondissement],
-                onSelect = { selectedId = it },
+                // Remonte à la mosaïque : sinon le quartier choisi est hors de vue, tout en haut.
+                onSelect = {
+                    selectedId = it
+                    scope.launch { scrollState.animateScrollTo(0) }
+                },
             )
         }
     }
