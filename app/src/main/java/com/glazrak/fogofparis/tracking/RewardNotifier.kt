@@ -15,7 +15,10 @@ import com.glazrak.fogofparis.data.ParisGeo
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CollectionSet
+import com.glazrak.fogofparis.domain.Medal
+import com.glazrak.fogofparis.domain.POINTS_PER_ARRONDISSEMENT_BADGE
 import com.glazrak.fogofparis.domain.POINTS_PER_CELL
+import com.glazrak.fogofparis.domain.cellsNeededFor
 import com.glazrak.fogofparis.domain.POINTS_PER_COMPLETED_SET
 import com.glazrak.fogofparis.domain.POINTS_PER_MEDAL
 import com.glazrak.fogofparis.domain.POINTS_PER_PLACE
@@ -23,6 +26,7 @@ import com.glazrak.fogofparis.domain.collectionProgress
 import com.glazrak.fogofparis.domain.levelFor
 import com.glazrak.fogofparis.domain.medalsCrossed
 import com.glazrak.fogofparis.domain.totalPoints
+import com.glazrak.fogofparis.ui.arrondissementLabel
 import com.glazrak.fogofparis.ui.emoji
 import com.glazrak.fogofparis.ui.label
 
@@ -76,6 +80,21 @@ class RewardNotifier(
                     title = context.getString(R.string.medal_notification_title, medal.emoji, medal.label(context), quartier.name),
                     text = context.getString(R.string.medal_notification_text, medal.thresholdPercent),
                 )
+            }
+            // Ce Bronze était-il le dernier qui manquait à l'arrondissement ?
+            if (Medal.BRONZE in medals) {
+                val siblings = geo.quartiers.quartiers.filter { it.arrondissement == quartier.arrondissement }
+                val allBronze = siblings.all { sibling ->
+                    (state.revealedPerQuartier[sibling.id] ?: 0) >= cellsNeededFor(Medal.BRONZE, sibling.cells.totalCells)
+                }
+                if (allBronze) {
+                    state.points += POINTS_PER_ARRONDISSEMENT_BADGE
+                    notify(
+                        id = BADGE_ID_BASE + quartier.arrondissement,
+                        title = context.getString(R.string.badge_title, arrondissementLabel(context, quartier.arrondissement)),
+                        text = context.getString(R.string.badge_text, POINTS_PER_ARRONDISSEMENT_BADGE),
+                    )
+                }
             }
         }
 
@@ -153,6 +172,7 @@ class RewardNotifier(
         // Un identifiant par quartier / série : la récompense suivante remplace la précédente.
         const val MEDAL_ID_BASE = 1000
         const val SET_ID_BASE = 2000
+        const val BADGE_ID_BASE = 2500
         const val PLACE_ID = 3000
         const val LEVEL_ID = 3001
     }

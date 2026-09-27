@@ -53,7 +53,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glazrak.fogofparis.R
+import com.glazrak.fogofparis.domain.ArrondissementBadge
 import com.glazrak.fogofparis.domain.GeoPosition
+import com.glazrak.fogofparis.domain.arrondissementBadges
 import com.glazrak.fogofparis.domain.Medal
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
@@ -96,9 +98,21 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
             }
         }
         SelectedQuartierCard(selected, onShow = { onShowQuartier(selected.quartier) })
-        SectionLabel(stringResource(R.string.by_arrondissement))
+        val badges = remember(progress) { arrondissementBadges(progress).associateBy { it.arrondissement } }
+        Column {
+            SectionLabel(stringResource(R.string.badges_title))
+            Text(
+                stringResource(R.string.badges_subtitle, badges.values.count { it.earned }),
+                style = MaterialTheme.typography.bodySmall,
+                color = Night.TextMuted,
+            )
+        }
         progress.groupBy { it.quartier.arrondissement }.toSortedMap().forEach { (arrondissement, quartiers) ->
-            ArrondissementRow(arrondissement, quartiers.sortedBy { it.quartier.id }, selected.quartier.id, onSelect = { selectedId = it })
+            ArrondissementRow(
+                arrondissement, quartiers.sortedBy { it.quartier.id }, selected.quartier.id,
+                badge = badges[arrondissement],
+                onSelect = { selectedId = it },
+            )
         }
     }
 }
@@ -236,7 +250,13 @@ private fun SelectedQuartierCard(progress: QuartierProgress, onShow: () -> Unit)
 
 // Une ligne par arrondissement : ses 4 quartiers en petites barres colorées.
 @Composable
-private fun ArrondissementRow(arrondissement: Int, quartiers: List<QuartierProgress>, selectedId: Int, onSelect: (Int) -> Unit) {
+private fun ArrondissementRow(
+    arrondissement: Int,
+    quartiers: List<QuartierProgress>,
+    selectedId: Int,
+    badge: ArrondissementBadge?,
+    onSelect: (Int) -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             if (arrondissement == 1) "1er" else "${arrondissement}e",
@@ -262,6 +282,17 @@ private fun ArrondissementRow(arrondissement: Int, quartiers: List<QuartierProgr
                             .background(fillFor(quartier)),
                     )
                 }
+            }
+        }
+        // Badge : doré une fois gagné, sinon discret avec le nombre de Bronze obtenus.
+        if (badge != null) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    painterResource(R.drawable.ic_badge),
+                    contentDescription = stringResource(R.string.badge_progress, badge.bronzeQuartiers, badge.quartierCount),
+                    tint = if (badge.earned) Night.Gold else Night.Started,
+                    modifier = Modifier.size(if (badge.earned) 28.dp else 24.dp),
+                )
             }
         }
     }

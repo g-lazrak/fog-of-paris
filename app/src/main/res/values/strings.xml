@@ -107,6 +107,11 @@
     <string name="celebration_continue">Continuer</string>
     <string name="nearby_alerts_title">Me prévenir des lieux proches</string>
     <string name="nearby_alerts_text">Quand vous marchez dans des rues que vous connaissez déjà, le téléphone vibre et vous signale un lieu de collection pas encore visité à moins de 200 m. Rien ne s\'affiche quand vous explorez de nouvelles rues.</string>
+    <string name="badge_title">🏅 Badge : %1$s</string>
+    <string name="badge_text">Ses 4 quartiers ont le Bronze · +%1$d pts</string>
+    <string name="badge_progress">Badge : %1$d quartiers sur %2$d au Bronze</string>
+    <string name="badges_title">Badges d\'arrondissement</string>
+    <string name="badges_subtitle">%1$d / 20 · un badge quand les 4 quartiers ont le Bronze</string>
     <string name="nearby_channel_name">Lieux proches</string>
     <string name="nearby_title">📍 %1$s est tout près</string>
     <string name="nearby_text">À %1$s, et pas encore dans votre collection.</string>

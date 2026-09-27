@@ -71,6 +71,27 @@ class ScoringTest {
     }
 
     @Test
+    fun arrondissement_badge_needs_bronze_in_every_quartier() {
+        // A et B forment un arrondissement (1) : Bronze dans A seulement → pas de badge.
+        val onlyA = arrondissementBadges(index.progress(visitsInA(10))).single()
+        assertEquals(1, onlyA.bronzeQuartiers)
+        assertNull(onlyA.earnedAt)
+
+        val visitsInB = (0 until 10).map { i -> VisitedCell(CellId(10 + i, 0), firstVisitedAt = 50_000L + i) }
+        val both = arrondissementBadges(index.progress(visitsInA(10) + visitsInB)).single()
+        // Gagné au moment du dernier Bronze nécessaire (10e cellule de B).
+        assertEquals(50_009L, both.earnedAt)
+    }
+
+    @Test
+    fun badge_adds_its_points() {
+        val visitsInB = (0 until 10).map { i -> VisitedCell(CellId(10 + i, 0), firstVisitedAt = 50_000L + i) }
+        val progress = index.progress(visitsInA(10) + visitsInB)
+        // 20 cellules + 2 Bronze + 1 badge.
+        assertEquals(20 + 2 * POINTS_PER_MEDAL + POINTS_PER_ARRONDISSEMENT_BADGE, totalPoints(20, progress, emptyList()))
+    }
+
+    @Test
     fun new_medal_is_detected_only_when_crossing_a_threshold() {
         assertEquals(listOf(Medal.BRONZE), medalsCrossed(before = 9, after = 10, totalCells = 100))
         assertEquals(emptyList<Medal>(), medalsCrossed(before = 10, after = 11, totalCells = 100))

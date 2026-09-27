@@ -75,7 +75,7 @@ fun medalDates(sortedVisitTimes: List<Long>, totalCells: Int): Map<Medal, Long> 
 
 // Points : 1 par cellule révélée dans Paris + 100 par médaille (cumulées :
 // un quartier en Or rapporte Bronze + Argent + Or = 300) + les collections
-// (50 par lieu, 500 par série complète).
+// (50 par lieu, 500 par série complète) + 300 par badge d'arrondissement.
 fun totalPoints(
     revealedCellsInParis: Int,
     quartiers: List<QuartierProgress>,
@@ -83,7 +83,8 @@ fun totalPoints(
 ): Int =
     revealedCellsInParis * POINTS_PER_CELL +
         quartiers.sumOf { it.medalDates.size } * POINTS_PER_MEDAL +
-        collectionPoints(collections)
+        collectionPoints(collections) +
+        arrondissementBadges(quartiers).count { it.earned } * POINTS_PER_ARRONDISSEMENT_BADGE
 
 // Les médailles gagnées en passant de `before` à `after` cellules révélées
 // (plusieurs d'un coup possible dans un tout petit quartier).

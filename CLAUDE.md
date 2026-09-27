@@ -106,6 +106,13 @@ Personal project, not published on the Play Store for now.
      Touriste 3 500, Arpenteur 7 000, Explorateur 12 000, Parisien 20 000,
      Cartographe 30 000, Baron Haussmann 45 000.
    - Quiet notifications for new place, completed set, new title.
+   - Arrondissement badges: all 4 quartiers of an arrondissement at ≥ Bronze
+     → badge, +300 pts (20 badges).
+   - Hidden treasures: exactly one per quartier (80), mix of hidden gems and
+     historic curiosities (`tools/places/treasures.tsv`). Never shown on the
+     map, compass or nearby alerts; each quartier shows its hint, the name
+     stays "???" until found (within ~60 m). +150 pts each, no set bonus. The
+     owner reviews the list.
    - **Points are fixed** (owner, 2026-09-27): never multipliers, "double
      points" events or time-limited bonuses. No proximity vibrations either.
    - Phase 8 (approved 2026-09-27): "Paris la nuit" redesign following the
