@@ -41,6 +41,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.glazrak.fogofparis.R
@@ -127,6 +130,8 @@ fun MapScreen(
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val quartierOutlines by viewModel.quartierOutlines.collectAsStateWithLifecycle()
     val placeMarkers by viewModel.placeMarkers.collectAsStateWithLifecycle()
+    val selectedDay by viewModel.selectedDay.collectAsStateWithLifecycle()
+    val dayCells by viewModel.dayCells.collectAsStateWithLifecycle()
     val cameraMove by viewModel.cameraMove.collectAsStateWithLifecycle()
     val currentPosition by viewModel.currentPosition.collectAsStateWithLifecycle()
     val parisBoundary by viewModel.parisBoundary.collectAsStateWithLifecycle()
@@ -181,8 +186,19 @@ fun MapScreen(
                     bounds.build(), sidePaddingPx, verticalPaddingPx, sidePaddingPx, verticalPaddingPx,
                 )
             }
+            is CameraMove.ToBounds -> {
+                val bounds = LatLngBounds.Builder()
+                    .include(LatLng(move.south, move.west))
+                    .include(LatLng(move.north, move.east))
+                    .build()
+                // Marges positionnelles (API Java) : left, top, right, bottom.
+                CameraUpdateFactory.newLatLngBounds(bounds, sidePaddingPx, verticalPaddingPx, sidePaddingPx, verticalPaddingPx)
+            }
         }
         map?.animateCamera(update)
+    }
+    LaunchedEffect(style, dayCells) {
+        style?.let { updateDayCells(it, dayCells) }
     }
     LaunchedEffect(style, placeMarkers) {
         style?.let { updatePlaces(it, placeMarkers) }
@@ -216,15 +232,22 @@ fun MapScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        summary?.let {
-            SummaryBanner(
-                summary = it,
-                onClick = onOpenProgress,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(top = 12.dp),
+        val topBannerModifier = Modifier
+            .align(Alignment.TopCenter)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(top = 12.dp)
+        val day = selectedDay
+        if (day != null) {
+            DayBanner(
+                day = day,
+                cellCount = dayCells.size,
+                onPrevious = { viewModel.shiftDay(forward = false) },
+                onNext = { viewModel.shiftDay(forward = true) },
+                onClose = viewModel::clearDay,
+                modifier = topBannerModifier,
             )
+        } else {
+            summary?.let { SummaryBanner(summary = it, onClick = onOpenProgress, modifier = topBannerModifier) }
         }
         SmallFloatingActionButton(
             onClick = onRecenter,
@@ -404,4 +427,54 @@ private fun rememberMapViewWithLifecycle(): MapView {
         }
     }
     return mapView
+}
+
+private val DAY_FORMAT: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", java.util.Locale.FRANCE)
+
+// Bandeau du journal : le jour affiché, ‹ › pour changer de jour, ✕ pour revenir à la vue normale.
+@Composable
+private fun DayBanner(
+    day: java.time.LocalDate,
+    cellCount: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, Night.Gold),
+        modifier = modifier.padding(horizontal = 16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+            IconButton(onClick = onPrevious) {
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.day_previous))
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(
+                    day.format(DAY_FORMAT).replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    pluralStringResource(R.plurals.day_new_cells, cellCount, cellCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Night.Gold,
+                )
+            }
+            IconButton(onClick = onNext) {
+                // La même flèche retournée : « jour suivant ».
+                Icon(
+                    painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = stringResource(R.string.day_next),
+                    modifier = Modifier.rotate(180f),
+                )
+            }
+            IconButton(onClick = onClose) {
+                Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.day_close))
+            }
+        }
+    }
 }

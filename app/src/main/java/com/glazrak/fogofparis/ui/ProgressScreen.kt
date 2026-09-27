@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,10 +51,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glazrak.fogofparis.R
 import com.glazrak.fogofparis.domain.LevelProgress
 import com.glazrak.fogofparis.domain.PlaceDirection
-import com.glazrak.fogofparis.domain.WeekCount
+import com.glazrak.fogofparis.domain.DayCount
 import com.glazrak.fogofparis.tracking.collectionNameRes
 import com.glazrak.fogofparis.ui.theme.Night
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -63,6 +66,7 @@ fun ProgressScreen(
     viewModel: MapViewModel,
     onOpenSettings: () -> Unit,
     onShowPlace: (PlaceDirection) -> Unit,
+    onShowDay: (LocalDate) -> Unit,
 ) {
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val history by viewModel.weeklyHistory.collectAsStateWithLifecycle()
@@ -92,7 +96,8 @@ fun ProgressScreen(
             val set = collections.firstOrNull { it.set == direction.place.set }
             CompassCard(direction, set?.visitedCount, set?.places?.size, onClick = { onShowPlace(direction) })
         }
-        if (history.isNotEmpty()) WeeklyChart(history)
+        val days by viewModel.dailyHistory.collectAsStateWithLifecycle()
+        if (days.isNotEmpty()) JournalCard(days, onShowDay)
     }
 }
 
@@ -229,28 +234,44 @@ private fun CompassCard(direction: PlaceDirection, visitedInSet: Int?, setSize: 
     }
 }
 
+private val WEEKDAY_INITIAL: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEEE", Locale.FRANCE)
+
+// Journal de marche : une barre par jour (nouveaux carrés) ; un appui montre ce jour sur la carte.
 @Composable
-private fun WeeklyChart(history: List<WeekCount>) {
-    val max = history.maxOf { it.revealedCells }.coerceAtLeast(1)
+private fun JournalCard(days: List<DayCount>, onDay: (LocalDate) -> Unit) {
+    val max = days.maxOf { it.revealedCells }.coerceAtLeast(1)
     NightCard {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(stringResource(R.string.history_title), style = MaterialTheme.typography.titleSmall, color = Night.Text, modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.history_weeks, history.size), style = MaterialTheme.typography.labelMedium, color = Night.TextMuted)
-        }
+        Text(stringResource(R.string.journal_title), style = MaterialTheme.typography.titleSmall, color = Night.Text)
+        Text(stringResource(R.string.journal_hint), style = MaterialTheme.typography.labelMedium, color = Night.TextMuted)
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.fillMaxWidth().height(70.dp),
+            modifier = Modifier.fillMaxWidth().height(96.dp),
         ) {
-            history.forEachIndexed { index, week ->
-                val isCurrent = index == history.lastIndex
-                Box(
+            days.forEach { day ->
+                // Toute la colonne est touchable, pas seulement la barre (souvent minuscule).
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight((week.revealedCells.toFloat() / max).coerceAtLeast(0.06f))
+                        .fillMaxHeight()
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isCurrent) Night.Gold else Night.Border),
-                )
+                        .clickable { onDay(day.date) },
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight((day.revealedCells.toFloat() / max * 0.8f).coerceAtLeast(0.04f))
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (day.revealedCells > 0) Night.Gold else Night.Border),
+                    )
+                    Text(
+                        day.date.format(WEEKDAY_INITIAL).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Night.TextMuted,
+                    )
+                }
             }
         }
     }

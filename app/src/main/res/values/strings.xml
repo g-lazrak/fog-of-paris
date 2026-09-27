@@ -121,6 +121,15 @@
     <string name="nearby_channel_name">Lieux proches</string>
     <string name="nearby_title">📍 %1$s est tout près</string>
     <string name="nearby_text">À %1$s, et pas encore dans votre collection.</string>
+    <string name="journal_title">Journal de marche</string>
+    <string name="journal_hint">Touchez un jour pour voir ses nouvelles rues sur la carte</string>
+    <string name="day_previous">Jour précédent</string>
+    <string name="day_next">Jour suivant</string>
+    <string name="day_close">Fermer le journal</string>
+    <plurals name="day_new_cells">
+        <item quantity="one">%1$d nouveau carré</item>
+        <item quantity="other">%1$d nouveaux carrés</item>
+    </plurals>
     <string name="dark_map_title">Carte sombre</string>
     <string name="dark_map_text">Une carte bleu nuit assortie aux menus. Par défaut, la carte est claire : les rues s\'y lisent mieux.</string>
     <string name="about_title">À propos</string>

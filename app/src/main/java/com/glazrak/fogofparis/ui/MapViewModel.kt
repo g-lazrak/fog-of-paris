@@ -34,7 +34,12 @@ import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
 import com.glazrak.fogofparis.domain.TrackingStatus
 import com.glazrak.fogofparis.domain.VisitedCell
+import com.glazrak.fogofparis.domain.DayCount
 import com.glazrak.fogofparis.domain.WeekCount
+import com.glazrak.fogofparis.domain.adjacentActiveDay
+import com.glazrak.fogofparis.domain.cellToBounds
+import com.glazrak.fogofparis.domain.cellsRevealedOn
+import com.glazrak.fogofparis.domain.dailyHistory
 import com.glazrak.fogofparis.domain.fogAlphaMask
 import com.glazrak.fogofparis.domain.totalPoints
 import com.glazrak.fogofparis.domain.trackingStatus
@@ -79,6 +84,13 @@ sealed interface CameraMove {
 
     data class ToPosition(val position: GeoPosition, override val requestId: Int) : CameraMove
     data class ToArea(val boundary: CityBoundary, override val requestId: Int) : CameraMove
+    data class ToBounds(
+        val south: Double,
+        val west: Double,
+        val north: Double,
+        val east: Double,
+        override val requestId: Int,
+    ) : CameraMove
 }
 
 // Données de tous les écrans (carte, progrès, quartiers, collections). Survit aux rotations d'écran,
@@ -223,6 +235,50 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Recalculée à chaque nouvelle cellule (une petite image, quelques ms).
+    // Journal de marche : les 14 derniers jours, pour l'écran « Progrès ».
+    val dailyHistory: StateFlow<List<DayCount>> = visits
+        .map { list -> dailyHistory(list.map { it.firstVisitedAt }, LocalDate.now(), ZoneId.systemDefault()) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Jour affiché sur la carte (null = vue normale).
+    private val _selectedDay = MutableStateFlow<LocalDate?>(null)
+    val selectedDay: StateFlow<LocalDate?> = _selectedDay.asStateFlow()
+
+    // Cellules révélées pour la première fois le jour affiché.
+    val dayCells: StateFlow<Set<CellId>> = combine(visits, _selectedDay) { list, day ->
+        if (day == null) emptySet() else cellsRevealedOn(list, day, ZoneId.systemDefault())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun showDay(day: LocalDate) {
+        _selectedDay.value = day
+        val cells = cellsRevealedOn(visits.value, day, ZoneId.systemDefault())
+        if (cells.isNotEmpty()) {
+            // Cadre la carte sur les rues découvertes ce jour-là.
+            val south = cells.minOf { it.y }
+            val north = cells.maxOf { it.y }
+            val west = cells.minOf { it.x }
+            val east = cells.maxOf { it.x }
+            val sw = cellToBounds(CellId(west, south))
+            val ne = cellToBounds(CellId(east, north))
+            _cameraMove.value = CameraMove.ToBounds(
+                south = sw.latSouth, west = sw.lonWest, north = ne.latNorth, east = ne.lonEast,
+                requestId = nextRequestId(),
+            )
+        }
+    }
+
+    // Jour précédent / suivant ayant au moins une nouvelle cellule.
+    fun shiftDay(forward: Boolean) {
+        val current = _selectedDay.value ?: return
+        adjacentActiveDay(visits.value, current, ZoneId.systemDefault(), forward)?.let { showDay(it) }
+    }
+
+    fun clearDay() {
+        _selectedDay.value = null
+    }
+
     // Carte claire par défaut ; la sombre est un réglage.
     val mapLook: StateFlow<MapLook> = settings.darkMap
         .map { dark -> if (dark) MapLook.DARK else MapLook.LIGHT }

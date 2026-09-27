@@ -66,6 +66,8 @@ private const val FOG_SOURCE_ID = "fog-source"
 private const val FOG_LAYER_ID = "fog-layer"
 private const val QUARTIERS_SOURCE_ID = "quartiers-source"
 private const val QUARTIERS_LAYER_ID = "quartiers-layer"
+private const val DAY_SOURCE_ID = "day-source"
+private const val DAY_LAYER_ID = "day-layer"
 private const val OUTSIDE_SOURCE_ID = "outside-source"
 private const val OUTSIDE_LAYER_ID = "outside-layer"
 private const val PLACES_SOURCE_ID = "places-source"
@@ -103,6 +105,14 @@ fun addGameLayers(style: Style) {
             lineColor(Color.WHITE),
             lineOpacity(0.25f),
             lineWidth(1f),
+        )
+    )
+    // Journal : les carrés découverts le jour choisi, en doré par-dessus le brouillard.
+    style.addSource(GeoJsonSource(DAY_SOURCE_ID))
+    style.addLayer(
+        FillLayer(DAY_LAYER_ID, DAY_SOURCE_ID).withProperties(
+            fillColor(Color.rgb(233, 185, 73)),
+            fillOpacity(0.65f),
         )
     )
     style.addSource(GeoJsonSource(OUTSIDE_SOURCE_ID))
@@ -174,6 +184,24 @@ fun updateFog(style: Style, fog: FogImage) {
         ),
         QUARTIERS_LAYER_ID,
     )
+}
+
+fun updateDayCells(style: Style, cells: Set<CellId>) {
+    val squares = cells.map { cell ->
+        val b = cellToBounds(cell)
+        Feature.fromGeometry(
+            Polygon.fromLngLats(
+                listOf(
+                    listOf(
+                        Point.fromLngLat(b.lonWest, b.latSouth), Point.fromLngLat(b.lonEast, b.latSouth),
+                        Point.fromLngLat(b.lonEast, b.latNorth), Point.fromLngLat(b.lonWest, b.latNorth),
+                        Point.fromLngLat(b.lonWest, b.latSouth),
+                    )
+                )
+            )
+        )
+    }
+    style.getSourceAs<GeoJsonSource>(DAY_SOURCE_ID)?.setGeoJson(FeatureCollection.fromFeatures(squares))
 }
 
 fun updatePlaces(style: Style, markers: List<PlaceMarker>) {

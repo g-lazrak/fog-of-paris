@@ -71,6 +71,10 @@ class MainActivity : ComponentActivity() {
                                     AppTab.PROGRESS -> ProgressScreen(
                                         viewModel = viewModel,
                                         onOpenSettings = { showSettings = true },
+                                        onShowDay = { day ->
+                                            viewModel.showDay(day)
+                                            tab = AppTab.MAP
+                                        },
                                         onShowPlace = { direction ->
                                             viewModel.showPlace(direction.place)
                                             tab = AppTab.MAP
