@@ -345,9 +345,10 @@ private fun applyOrnamentMargins(
 ) {
     val ui = map.uiSettings
     val bottom = insets.bottom + basePx
+    // Le logo MapLibre est facultatif (licence BSD) : on le retire. Les crédits
+    // OpenStreetMap / OpenFreeMap, eux, sont obligatoires : bouton (i) en bas à droite.
+    ui.isLogoEnabled = false
     // Marges positionnelles (API Java) : left, top, right, bottom.
-    ui.setLogoMargins(insets.left + basePx, 0, 0, bottom)
-    // Les crédits OpenStreetMap sont obligatoires : bouton (i) en bas à droite.
     ui.attributionGravity = Gravity.BOTTOM or Gravity.END
     ui.setAttributionMargins(0, 0, insets.right + basePx, bottom)
     ui.setCompassMargins(0, insets.top + basePx, insets.right + basePx, 0)
