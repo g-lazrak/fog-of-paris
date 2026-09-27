@@ -78,7 +78,10 @@
     <string name="hero_next_prefix">" · encore %1$s pour devenir "</string>
     <string name="compass_title">Prochain lieu le plus proche</string>
     <string name="history_weeks">%1$d semaines</string>
-    <string name="quartiers_subtitle">%1$d médaillés sur %2$d</string>
+    <plurals name="quartiers_subtitle">
+        <item quantity="one">%1$d médaillé sur %2$d</item>
+        <item quantity="other">%1$d médaillés sur %2$d</item>
+    </plurals>
     <string name="legend_started">Entamé</string>
     <string name="by_arrondissement">Par arrondissement</string>
     <string name="mosaic_description">Carte des 80 quartiers de Paris, colorés selon leur médaille</string>
@@ -86,7 +89,14 @@
     <string name="quartier_to_next_medal">%1$s · encore %2$d carrés pour %3$s</string>
     <string name="quartier_all_medals">Toutes les médailles !</string>
     <string name="show_on_map">Voir sur la carte</string>
-    <string name="collections_subtitle">%1$d lieux sur %2$d · %3$d séries complètes</string>
+    <plurals name="collections_places">
+        <item quantity="one">%1$d lieu sur %2$d</item>
+        <item quantity="other">%1$d lieux sur %2$d</item>
+    </plurals>
+    <plurals name="collections_complete_sets">
+        <item quantity="one">%1$d série complète</item>
+        <item quantity="other">%1$d séries complètes</item>
+    </plurals>
     <string name="recent_discoveries">Derniers lieux découverts</string>
     <string name="set_complete_badge">Série complète · +%1$d pts</string>
     <string name="today">aujourd\'hui</string>

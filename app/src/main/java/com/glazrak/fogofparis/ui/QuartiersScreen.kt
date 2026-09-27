@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -82,7 +83,9 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit)
     ) {
         ScreenHeader(
             title = stringResource(R.string.quartiers_title),
-            subtitle = stringResource(R.string.quartiers_subtitle, progress.count { it.medal != null }, progress.size),
+            subtitle = progress.count { it.medal != null }.let { medalled ->
+                pluralStringResource(R.plurals.quartiers_subtitle, medalled, medalled, progress.size)
+            },
         )
         NightCard(padding = 12.dp) {
             Mosaic(progress, selected.quartier.id, onSelect = { selectedId = it.id })

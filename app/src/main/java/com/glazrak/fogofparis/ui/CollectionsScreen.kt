@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,14 +65,12 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit) {
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
     ) {
+        val visited = collections.sumOf { it.visitedCount }
+        val complete = collections.count { it.isComplete }
         ScreenHeader(
             title = stringResource(R.string.collections_title),
-            subtitle = stringResource(
-                R.string.collections_subtitle,
-                collections.sumOf { it.visitedCount },
-                collections.sumOf { it.places.size },
-                collections.count { it.isComplete },
-            ),
+            subtitle = pluralStringResource(R.plurals.collections_places, visited, visited, collections.sumOf { it.places.size }) +
+                " · " + pluralStringResource(R.plurals.collections_complete_sets, complete, complete),
         )
         // Grille de 2 colonnes, construite à la main pour rester dans le défilement de l'écran.
         collections.chunked(2).forEach { pair ->
