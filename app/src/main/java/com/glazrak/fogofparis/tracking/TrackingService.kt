@@ -115,9 +115,10 @@ class TrackingService : Service() {
                 .setMinUpdateDistanceMeters(MIN_UPDATE_DISTANCE_M)
                 .build()
         } else {
-            // Pas à pied : rien à révéler. Position approximative (Wi-Fi / antennes,
-            // quasi sans GPS) une fois par minute, juste pour garder le point à jour.
-            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, PAUSED_INTERVAL_MS)
+            // Pas à pied : rien à révéler, donc aucun GPS allumé par nous (le suivi
+            // peut rester actif en permanence). "Passif" = on reçoit seulement les
+            // positions déjà demandées par d'autres apps : coût nul, garde le point à jour.
+            LocationRequest.Builder(Priority.PRIORITY_PASSIVE, PAUSED_INTERVAL_MS)
                 .build()
         }
         try {

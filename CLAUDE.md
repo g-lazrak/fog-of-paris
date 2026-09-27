@@ -76,8 +76,10 @@ Personal project, not published on the Play Store for now.
      "while in use" location access with the app closed. Consequence: tracking
      can't auto-restart after a reboot; the user taps the switch again.
    - Add a clear on/off switch for tracking in the UI.
-   - **Battery matters**: use balanced intervals, pause or slow down updates
-     when the user is not walking (activity recognition helps here).
+   - **Battery matters**: high-accuracy GPS only while on foot; otherwise
+     `PRIORITY_PASSIVE` (no GPS of our own). This lets tracking stay on
+     permanently — the owner chose "leave it on for good" (2026-09-27) over a
+     fully automatic start that would need "Allow all the time".
 4. **Gamification (Phase 7, rules approved by the owner 2026-09-26).**
    - Unit: Paris's **80 "quartiers administratifs"** (Paris OpenData
      `quartier_paris`, bundled GeoJSON).
