@@ -18,7 +18,7 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 private val NEARBY_ALERTS_KEY = booleanPreferencesKey("nearby_alerts")
 private val LAST_CELEBRATED_LEVEL_KEY = intPreferencesKey("last_celebrated_level")
 private val ANNOUNCED_PLACES_KEY = stringSetPreferencesKey("announced_places")
-private val DARK_MAP_KEY = booleanPreferencesKey("dark_map")
+private val MAP_STYLE_KEY = stringPreferencesKey("map_style")
 private val REVEALED_PINS_KEY = stringSetPreferencesKey("revealed_treasure_pins")
 private val TRACKING_ENABLED_KEY = booleanPreferencesKey("tracking_enabled")
 private val MENU_THEME_KEY = stringPreferencesKey("menu_theme")
@@ -47,11 +47,11 @@ class SettingsStore(private val context: Context) {
         context.settingsDataStore.edit { it[REVEALED_PINS_KEY] = it[REVEALED_PINS_KEY].orEmpty() + id }
     }
 
-    // Carte sombre : désactivée par défaut (le propriétaire préfère la carte claire).
-    val darkMap: Flow<Boolean> = context.settingsDataStore.data.map { it[DARK_MAP_KEY] ?: false }
+    // Fond de carte choisi (nom d'un MapLook) ; null tant qu'on n'a rien choisi.
+    val mapStyle: Flow<String?> = context.settingsDataStore.data.map { it[MAP_STYLE_KEY] }
 
-    suspend fun setDarkMap(enabled: Boolean) {
-        context.settingsDataStore.edit { it[DARK_MAP_KEY] = enabled }
+    suspend fun setMapStyle(name: String) {
+        context.settingsDataStore.edit { it[MAP_STYLE_KEY] = name }
     }
 
     // Dernier niveau déjà fêté à l'écran ; null avant la toute première ouverture.

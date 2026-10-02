@@ -8,7 +8,8 @@ import kotlin.math.sqrt
 // La couleur et l'opacité réelles dépendent du style de carte (voir MapLook).
 const val FOG_ALPHA = 255
 
-// Pixels par cellule dans l'image du brouillard (4 → un pixel ≈ 12 m).
+// Résolution par défaut du champ de brouillard (4 → un point ≈ 12 m) ;
+// les contours affichés (FogContours.kt) utilisent un champ plus fin.
 const val FOG_PIXELS_PER_CELL = 4
 
 // Chaque cellule révélée dégage un disque doux centré sur elle, au lieu d'un
@@ -19,7 +20,7 @@ const val FOG_PIXELS_PER_CELL = 4
 const val CLEAR_RADIUS = 0.55
 const val FOG_RADIUS = 1.1
 
-// Image du brouillard sur l'emprise donnée : une valeur d'opacité par pixel,
+// Champ du brouillard sur l'emprise donnée : une force (0-255) par point,
 // ligne par ligne en partant du NORD (comme une image), d'ouest en est.
 fun fogAlphaMask(
     visitedCells: Set<CellId>,

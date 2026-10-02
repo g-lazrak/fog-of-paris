@@ -71,7 +71,24 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
                 checked = isTracking,
                 onChange = { on -> if (on) onStartTracking() else viewModel.stopTracking() },
             )
-            ThemeChoice(selected = menuTheme, onSelect = viewModel::setMenuTheme)
+            SettingChoice(
+                icon = R.drawable.ic_tab_map,
+                color = Night.Teal,
+                title = stringResource(R.string.map_style_title),
+                options = MapLook.entries,
+                selected = mapLook,
+                label = { it.label },
+                onSelect = viewModel::setMapLook,
+            )
+            SettingChoice(
+                icon = R.drawable.ic_contrast,
+                color = Night.Orchid,
+                title = stringResource(R.string.menu_theme_title),
+                options = MenuTheme.entries,
+                selected = menuTheme,
+                label = { it.label },
+                onSelect = viewModel::setMenuTheme,
+            )
             SettingSwitch(
                 icon = R.drawable.ic_pin,
                 color = Night.Teal,
@@ -80,36 +97,36 @@ fun SettingsScreen(viewModel: MapViewModel, onClose: () -> Unit) {
                 checked = nearbyAlerts,
                 onChange = viewModel::setNearbyAlerts,
             )
-            SettingSwitch(
-                icon = R.drawable.ic_moon,
-                color = Night.Periwinkle,
-                title = stringResource(R.string.dark_map_title),
-                text = stringResource(R.string.dark_map_text),
-                checked = mapLook == MapLook.DARK,
-                onChange = viewModel::setDarkMap,
-            )
             SectionLabel(stringResource(R.string.about_title))
             Text(stringResource(R.string.about_text), style = MaterialTheme.typography.bodySmall, color = Night.TextMuted)
         }
     }
 }
 
-// Thème des menus : trois boutons côte à côte, celui choisi en or.
+// Un choix entre quelques options : boutons côte à côte, celui choisi en or.
 @Composable
-private fun ThemeChoice(selected: MenuTheme, onSelect: (MenuTheme) -> Unit) {
+private fun <T> SettingChoice(
+    @DrawableRes icon: Int,
+    color: Color,
+    title: String,
+    options: List<T>,
+    selected: T,
+    label: (T) -> Int,
+    onSelect: (T) -> Unit,
+) {
     NightCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconBadge(R.drawable.ic_contrast, Night.Orchid)
+            IconBadge(icon, color)
             Text(
-                stringResource(R.string.menu_theme_title),
+                title,
                 style = MaterialTheme.typography.titleMedium,
                 color = Night.Text,
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MenuTheme.entries.forEach { theme ->
-                val isSelected = theme == selected
+            options.forEach { option ->
+                val isSelected = option == selected
                 val shape = RoundedCornerShape(12.dp)
                 Box(
                     contentAlignment = Alignment.Center,
@@ -119,11 +136,11 @@ private fun ThemeChoice(selected: MenuTheme, onSelect: (MenuTheme) -> Unit) {
                         .clip(shape)
                         .background(if (isSelected) Night.Gold else Night.SurfaceHigh)
                         .border(1.dp, if (isSelected) Night.Gold else Night.Border, shape)
-                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(theme) })
+                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) })
                         .padding(horizontal = 6.dp, vertical = 8.dp),
                 ) {
                     Text(
-                        stringResource(theme.label),
+                        stringResource(label(option)),
                         style = MaterialTheme.typography.labelLarge,
                         color = if (isSelected) Night.GoldInk else Night.TextSoft,
                         textAlign = TextAlign.Center,
@@ -133,6 +150,12 @@ private fun ThemeChoice(selected: MenuTheme, onSelect: (MenuTheme) -> Unit) {
         }
     }
 }
+
+private val MapLook.label: Int
+    get() = when (this) {
+        MapLook.EXPLORER -> R.string.map_style_explorer
+        MapLook.AERIAL -> R.string.map_style_aerial
+    }
 
 private val MenuTheme.label: Int
     get() = when (this) {

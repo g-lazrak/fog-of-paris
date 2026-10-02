@@ -3,7 +3,6 @@ package com.glazrak.fogofparis.ui
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -15,7 +14,6 @@ import com.glazrak.fogofparis.data.SettingsStore
 import com.glazrak.fogofparis.data.VisitedCellsRepository
 import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
-import com.glazrak.fogofparis.domain.CityCells
 import com.glazrak.fogofparis.domain.CollectionProgress
 import com.glazrak.fogofparis.domain.CollectionSet
 import com.glazrak.fogofparis.domain.isRevealedPlace
@@ -28,8 +26,6 @@ import com.glazrak.fogofparis.domain.placeDiscoveryTimes
 import com.glazrak.fogofparis.domain.Place
 import com.glazrak.fogofparis.domain.collectionProgress
 import com.glazrak.fogofparis.domain.levelFor
-import com.glazrak.fogofparis.domain.FOG_ALPHA
-import com.glazrak.fogofparis.domain.FOG_PIXELS_PER_CELL
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierProgress
@@ -48,7 +44,7 @@ import com.glazrak.fogofparis.domain.adjacentActiveDay
 import com.glazrak.fogofparis.domain.cellToBounds
 import com.glazrak.fogofparis.domain.cellsRevealedOn
 import com.glazrak.fogofparis.domain.dailyHistory
-import com.glazrak.fogofparis.domain.fogAlphaMask
+import com.glazrak.fogofparis.domain.fogBands
 import com.glazrak.fogofparis.domain.totalPoints
 import com.glazrak.fogofparis.domain.trackingStatus
 import com.glazrak.fogofparis.domain.weeklyHistory
@@ -362,17 +358,18 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         lastHuntTrend = Trend.STEADY
     }
 
-    // Carte claire par défaut ; la sombre est un réglage.
-    val mapLook: StateFlow<MapLook> = settings.darkMap
-        .map { dark -> if (dark) MapLook.DARK else MapLook.LIGHT }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, MapLook.LIGHT)
+    // Carte « Explorateur » par défaut ; les photos aériennes sont un réglage.
+    val mapLook: StateFlow<MapLook> = settings.mapStyle
+        .map { name -> MapLook.entries.firstOrNull { it.name == name } ?: MapLook.EXPLORER }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, MapLook.EXPLORER)
 
-    fun setDarkMap(enabled: Boolean) {
-        viewModelScope.launch { settings.setDarkMap(enabled) }
+    fun setMapLook(look: MapLook) {
+        viewModelScope.launch { settings.setMapStyle(look.name) }
     }
 
-    val fogImage: StateFlow<FogImage?> = combine(visitedCells, geo.filterNotNull(), mapLook) { cells, parisGeo, look ->
-        buildFogImage(cells, parisGeo.cells, look)
+    // Recalculé à chaque nouvelle cellule ; la couleur dépend du style, pas de ce calcul.
+    val fogShapes: StateFlow<FogShapes?> = combine(visitedCells, geo.filterNotNull()) { cells, parisGeo ->
+        fogShapesOf(fogBands(cells, parisGeo.cells.extent))
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -474,17 +471,3 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 // Même bleu nuit que les menus (Night.Background), sans l'opacité.
-private fun buildFogImage(cells: Set<CellId>, city: CityCells, look: MapLook): FogImage {
-    val extent = city.extent
-    val strength = fogAlphaMask(cells, extent)
-    // Couleur du brouillard du style, opacité = force du masque × opacité du style.
-    // Couleur ARGB = alpha << 24 | RGB.
-    val colors = IntArray(strength.size) { ((strength[it] * look.fogOpacity / FOG_ALPHA) shl 24) or look.fogRgb }
-    val bitmap = Bitmap.createBitmap(
-        colors,
-        extent.width * FOG_PIXELS_PER_CELL,
-        extent.height * FOG_PIXELS_PER_CELL,
-        Bitmap.Config.ARGB_8888,
-    )
-    return FogImage(bitmap, extent)
-}

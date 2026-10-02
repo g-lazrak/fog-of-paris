@@ -1,17 +1,14 @@
 package com.glazrak.fogofparis.ui
 
-import android.graphics.Bitmap
 import android.graphics.Color
 import com.glazrak.fogofparis.domain.CellId
-import com.glazrak.fogofparis.domain.CellRect
+import com.glazrak.fogofparis.domain.FOG_BAND_LEVELS
+import com.glazrak.fogofparis.domain.FogBand
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.cellToBounds
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngQuad
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression.coalesce
 import org.maplibre.android.style.expressions.Expression.color
 import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.expressions.Expression.interpolate
@@ -32,8 +29,6 @@ import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
-import org.maplibre.android.style.layers.PropertyFactory.rasterFadeDuration
-import org.maplibre.android.style.layers.PropertyFactory.rasterResampling
 import org.maplibre.android.style.layers.PropertyFactory.textAnchor
 import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textField
@@ -43,27 +38,26 @@ import org.maplibre.android.style.layers.PropertyFactory.textHaloWidth
 import org.maplibre.android.style.layers.PropertyFactory.textOffset
 import org.maplibre.android.style.layers.PropertyFactory.textOpacity
 import org.maplibre.android.style.layers.PropertyFactory.textSize
-import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
-import org.maplibre.android.style.sources.ImageSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
+import kotlin.math.pow
 
-// Deux apparences de carte, au choix dans les Réglages. Chacune a son brouillard :
-// sur une carte sombre il faut un brouillard plus dense pour que les zones
-// révélées ressortent (sur « dark », elles devenaient invisibles : écarté).
-enum class MapLook(val styleUrl: String, val fogRgb: Int, val fogOpacity: Int) {
-    // Carte claire (par défaut) : brouillard noir à ~70 %.
-    LIGHT("https://tiles.openfreemap.org/styles/liberty", fogRgb = 0x000000, fogOpacity = 179),
-    // Carte « fiord » bleu-gris : brouillard bleu nuit (fond de l'app) à ~82 %.
-    DARK("https://tiles.openfreemap.org/styles/fiord", fogRgb = 0x0B1020, fogOpacity = 210),
+// Deux fonds de carte au choix dans les Réglages (propriétaire, 2026-10-03), tous
+// deux générés par tools/mapstyles/make_styles.pl et rangés dans l'app.
+// Le brouillard est bleu nuit (fond des menus) ; fogOpacity = brouillard plein.
+enum class MapLook(val styleUri: String, val fogRgb: Int, val fogOpacity: Double) {
+    // Couleurs de carte ancienne, sans arrêts de transport ni icônes (par défaut).
+    EXPLORER("asset://map_style_explorer.json", fogRgb = 0x0B1020, fogOpacity = 0.74),
+    // Photos aériennes de l'IGN avec les noms des rues.
+    AERIAL("asset://map_style_aerial.json", fogRgb = 0x0B1020, fogOpacity = 0.80),
 }
 
-private const val FOG_SOURCE_ID = "fog-source"
-private const val FOG_LAYER_ID = "fog-layer"
+private const val FOG_SOURCE_PREFIX = "fog-band-source-"
+private const val FOG_LAYER_PREFIX = "fog-band-layer-"
 private const val QUARTIERS_SOURCE_ID = "quartiers-source"
 private const val QUARTIERS_LAYER_ID = "quartiers-layer"
 private const val HUNT_SOURCE_ID = "hunt-source"
@@ -93,14 +87,44 @@ private val WORLD_RING = listOf(
     Point.fromLngLat(-180.0, -WORLD_LAT_LIMIT),
 )
 
-// Image du brouillard prête à afficher, avec la zone de la grille qu'elle couvre.
-class FogImage(val bitmap: Bitmap, val extent: CellRect)
+// Formes du brouillard prêtes à afficher : une collection par bande (FogContours.kt).
+class FogShapes(val bands: List<FeatureCollection>)
+
+// Les bandes s'empilent : avec n bandes d'opacité a, le brouillard plein vaut
+// 1 - (1 - a)^n, qu'on fait correspondre à l'opacité voulue du style.
+private fun bandOpacity(look: MapLook): Float =
+    (1 - (1 - look.fogOpacity).pow(1.0 / FOG_BAND_LEVELS.size)).toFloat()
+
+// Calcul (lourd) à faire hors du fil principal.
+fun fogShapesOf(bands: List<FogBand>): FogShapes = FogShapes(
+    bands.map { band ->
+        FeatureCollection.fromFeatures(
+            band.polygons.map { polygon ->
+                Feature.fromGeometry(
+                    Polygon.fromLngLats(
+                        (listOf(polygon.outer) + polygon.holes).map { ring ->
+                            ring.map { point -> point.toGeo().let { Point.fromLngLat(it.lon, it.lat) } }
+                        }
+                    )
+                )
+            }
+        )
+    }
+)
 
 // Ajoutés après le style de base, donc dessinés par-dessus, dans cet ordre :
-// brouillard (ajouté plus tard, voir updateFog), contours des quartiers, noir
-// hors de Paris (masque aussi les bords des cellules qui débordent de la
+// bandes du brouillard, contours des quartiers, noir hors de Paris (masque aussi les bords des cellules qui débordent de la
 // limite), puis la position.
-fun addGameLayers(style: Style) {
+fun addGameLayers(style: Style, look: MapLook) {
+    FOG_BAND_LEVELS.indices.forEach { band ->
+        style.addSource(GeoJsonSource(FOG_SOURCE_PREFIX + band))
+        style.addLayer(
+            FillLayer(FOG_LAYER_PREFIX + band, FOG_SOURCE_PREFIX + band).withProperties(
+                fillColor(Color.rgb(Color.red(look.fogRgb), Color.green(look.fogRgb), Color.blue(look.fogRgb))),
+                fillOpacity(bandOpacity(look)),
+            )
+        )
+    }
     style.addSource(GeoJsonSource(QUARTIERS_SOURCE_ID))
     style.addLayer(
         LineLayer(QUARTIERS_LAYER_ID, QUARTIERS_SOURCE_ID).withProperties(
@@ -170,32 +194,10 @@ fun addGameLayers(style: Style) {
     )
 }
 
-// Le style OpenFreeMap affiche les noms en anglais ("18th Arrondissement").
-// On prend le nom français, sinon le nom local.
-fun useFrenchLabels(style: Style) {
-    style.layers.filterIsInstance<SymbolLayer>()
-        .filter { it.textField.expression?.toString()?.contains("name_en") == true }
-        .forEach { it.setProperties(textField(coalesce(get("name:fr"), get("name")))) }
-}
-
-// Le brouillard est une petite image posée sur Paris (quelques pixels par
-// cellule). La carte l'agrandit en la lissant, ce qui adoucit les bords des
-// zones révélées. Elle est créée au premier appel, quand l'emprise est connue.
-fun updateFog(style: Style, fog: FogImage) {
-    val source = style.getSourceAs<ImageSource>(FOG_SOURCE_ID)
-    if (source != null) {
-        source.setImage(fog.bitmap)
-        return
+fun updateFog(style: Style, fog: FogShapes) {
+    fog.bands.forEachIndexed { band, shapes ->
+        style.getSourceAs<GeoJsonSource>(FOG_SOURCE_PREFIX + band)?.setGeoJson(shapes)
     }
-    style.addSource(ImageSource(FOG_SOURCE_ID, quadOf(fog.extent), fog.bitmap))
-    style.addLayerBelow(
-        RasterLayer(FOG_LAYER_ID, FOG_SOURCE_ID).withProperties(
-            rasterResampling(Property.RASTER_RESAMPLING_LINEAR),
-            // Pas de fondu à chaque mise à jour de l'image.
-            rasterFadeDuration(0f),
-        ),
-        QUARTIERS_LAYER_ID,
-    )
 }
 
 fun updateHuntPin(style: Style, position: GeoPosition?) {
@@ -266,13 +268,3 @@ fun updatePosition(style: Style, position: GeoPosition?) {
 
 // Coins géographiques de l'emprise, dans l'ordre attendu par MapLibre :
 // haut-gauche, haut-droite, bas-droite, bas-gauche.
-private fun quadOf(extent: CellRect): LatLngQuad {
-    val northWest = cellToBounds(CellId(extent.xMin, extent.yMax))
-    val southEast = cellToBounds(CellId(extent.xMax, extent.yMin))
-    return LatLngQuad(
-        LatLng(northWest.latNorth, northWest.lonWest),
-        LatLng(northWest.latNorth, southEast.lonEast),
-        LatLng(southEast.latSouth, southEast.lonEast),
-        LatLng(southEast.latSouth, northWest.lonWest),
-    )
-}

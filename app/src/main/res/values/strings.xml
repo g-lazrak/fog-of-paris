@@ -154,8 +154,9 @@
     <string name="warmth_cold">Froid</string>
     <string name="trend_closer">Vous vous rapprochez</string>
     <string name="trend_farther">Vous vous éloignez</string>
-    <string name="dark_map_title">Carte sombre</string>
-    <string name="dark_map_text">Une carte bleu nuit assortie aux menus. Par défaut, la carte est claire : les rues s\'y lisent mieux.</string>
+    <string name="map_style_title">Fond de carte</string>
+    <string name="map_style_explorer">Explorateur</string>
+    <string name="map_style_aerial">Photos aériennes</string>
     <string name="about_title">À propos</string>
-    <string name="about_text">Carte : © contributeurs OpenStreetMap, OpenFreeMap. Limites de Paris et quartiers : Paris OpenData. Polices Fraunces et DM Sans (licence SIL Open Font). Vos déplacements restent sur votre téléphone.</string>
+    <string name="about_text">Carte : © contributeurs OpenStreetMap, OpenFreeMap. Photos aériennes : © IGN. Limites de Paris et quartiers : Paris OpenData. Polices Fraunces et DM Sans (licence SIL Open Font). Vos déplacements restent sur votre téléphone.</string>
 </resources>

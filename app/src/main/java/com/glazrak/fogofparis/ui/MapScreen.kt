@@ -105,7 +105,7 @@ fun MapScreen(
         }
     }
 
-    val fogImage by viewModel.fogImage.collectAsStateWithLifecycle()
+    val fogShapes by viewModel.fogShapes.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val quartierOutlines by viewModel.quartierOutlines.collectAsStateWithLifecycle()
     val placeMarkers by viewModel.placeMarkers.collectAsStateWithLifecycle()
@@ -129,22 +129,21 @@ fun MapScreen(
             map = loadedMap
         }
     }
-    // (Re)charge le style à l'ouverture et quand on change carte claire / sombre.
+    // (Re)charge le style à l'ouverture et quand on change de fond de carte.
     // Les couches du jeu sont rajoutées, puis tous les effets liés à `style` se
     // relancent (brouillard, lieux, position…).
     val mapLook by viewModel.mapLook.collectAsStateWithLifecycle()
     LaunchedEffect(map, mapLook) {
         val loadedMap = map ?: return@LaunchedEffect
         style = null
-        loadedMap.setStyle(Style.Builder().fromUri(mapLook.styleUrl)) { loadedStyle ->
-            useFrenchLabels(loadedStyle)
-            addGameLayers(loadedStyle)
+        loadedMap.setStyle(Style.Builder().fromUri(mapLook.styleUri)) { loadedStyle ->
+            addGameLayers(loadedStyle, mapLook)
             style = loadedStyle
         }
     }
 
-    LaunchedEffect(style, fogImage) {
-        val fog = fogImage ?: return@LaunchedEffect
+    LaunchedEffect(style, fogShapes) {
+        val fog = fogShapes ?: return@LaunchedEffect
         style?.let { updateFog(it, fog) }
     }
     // Marges autour d'un quartier affiché : étroites sur les côtés, plus
