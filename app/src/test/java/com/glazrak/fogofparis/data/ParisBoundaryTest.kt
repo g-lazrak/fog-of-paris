@@ -8,6 +8,7 @@ import com.glazrak.fogofparis.domain.QuartierIndex
 import com.glazrak.fogofparis.domain.latLonToCell
 import com.glazrak.fogofparis.domain.GeoPosition
 import com.glazrak.fogofparis.domain.areaInSquareMeters
+import com.glazrak.fogofparis.domain.enclosedPatches
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -136,5 +137,27 @@ class ParisBoundaryTest {
         assertFalse(paris.contains(GeoPosition(lat = 48.8846, lon = 2.2697))) // Neuilly-sur-Seine
         assertFalse(paris.contains(GeoPosition(lat = 48.8638, lon = 2.4485))) // Montreuil
         assertFalse(paris.contains(GeoPosition(lat = 48.8477, lon = 2.4392))) // Vincennes (ville)
+    }
+
+    @Test
+    fun walkable_ways_cover_streets_but_not_block_interiors() {
+        val ways = walkableWaysFromText(File("src/main/assets/$WALKABLE_ASSET").readText())
+        val cells = CityCells.of(paris)
+        val walkable = cells.allCells().filter { ways.crosses(it) }.toSet()
+        // Most squares have a street, passage or path; a good share do not.
+        assertTrue(walkable.size in 20_000..cells.totalCells - 5_000)
+        assertTrue(ways.crosses(latLonToCell(48.8534, 2.3488))) // parvis de Notre-Dame
+
+        // Nothing walked: no block can be surrounded.
+        assertTrue(enclosedPatches(emptySet(), cells, ways).isEmpty())
+
+        // Everything walkable walked: most of the remaining fog is block interiors
+        // (or water between walked banks) and clears.
+        val start = System.nanoTime()
+        val cleared = enclosedPatches(walkable, cells, ways).sumOf { it.size }
+        val millis = (System.nanoTime() - start) / 1_000_000
+        val remaining = cells.totalCells - walkable.size
+        println("ENCLOSURES walkable=${walkable.size} remaining=$remaining cleared=$cleared in ${millis} ms")
+        assertTrue(cleared > remaining / 2)
     }
 }

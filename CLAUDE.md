@@ -90,8 +90,22 @@ Personal project, not published on the Play Store for now.
      `quartier_paris`, bundled GeoJSON).
    - Quartier % = revealed cells whose centre is in the quartier / all cells
      of the quartier (same method as the Paris-wide %).
-   - Medals: Bronze 10 %, Silver 25 %, Gold 50 %, Maîtrisé 75 %. Not 100 %:
-     building interiors can't be walked, so 100 % is practically unreachable.
+   - Medals: Bronze 10 %, Silver 25 %, Gold 50 %, Maîtrisé 75 % (set when
+     building interiors were unreachable; the block rule below makes them
+     easier: owner will review thresholds after playing, 2026-10-03). Idea
+     kept for later: a 5th medal « Cartographié » at 100 %.
+   - **Surrounded blocks (owner, 2026-10-03)**: a fog patch completely
+     surrounded by walked cells (diagonal steps close the wall; the Paris limit
+     also counts as a wall) is revealed if no walkable public way crosses it
+     (`assets/walkable_cells.txt` from OSM via `tools/walkable/`: streets,
+     passages, paths, steps, berges; not private ways, driveways, motorways or
+     underground corridors; a way marks a cell only through its middle) and it
+     is at most 100 cells (~25 ha, safety limit). Water between walked banks
+     and bridges clears the same way, so water is NOT excluded from totals.
+     Revealed cells count for fog, %, medals, badges and points (+1 each),
+     dated when the loop closed (journal); places and treasures still need
+     walked cells. Derived, nothing stored (`Enclosures.kt`). With every
+     walkable way walked, ~98 % of Paris would be revealed.
    - Points = 1 per revealed cell in Paris + 100 per medal (cumulative: a
      Gold quartier gives 3 medals = 300).
    - History is derived from `firstVisitedAt` (cells per week, medal dates);

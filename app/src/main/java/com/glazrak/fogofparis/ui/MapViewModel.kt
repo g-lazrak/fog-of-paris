@@ -48,6 +48,7 @@ import com.glazrak.fogofparis.domain.fogBands
 import com.glazrak.fogofparis.domain.totalPoints
 import com.glazrak.fogofparis.domain.trackingStatus
 import com.glazrak.fogofparis.domain.weeklyHistory
+import com.glazrak.fogofparis.domain.withEnclosedCells
 import com.glazrak.fogofparis.tracking.TrackingService
 import com.glazrak.fogofparis.tracking.TrackingState
 import com.glazrak.fogofparis.tracking.canTrack
@@ -127,6 +128,20 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     // null tant que les fichiers de Paris ne sont pas lus (moins d'une seconde).
     private val geo = MutableStateFlow<ParisGeo?>(null)
+
+    // Cellules révélées = parcourues + îlots dévoilés (règle des îlots, Enclosures.kt).
+    // Elles comptent pour le brouillard, les % et les points ; les lieux et les
+    // trésors, eux, demandent d'être passé à côté (cellules parcourues seulement).
+    private val revealedVisits: StateFlow<List<VisitedCell>> =
+        combine(visits, geo.filterNotNull()) { list, parisGeo ->
+            withEnclosedCells(list, parisGeo.cells, parisGeo.walkableWays)
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val revealedCells: StateFlow<Set<CellId>> = revealedVisits
+        .map { list -> list.mapTo(HashSet(list.size)) { it.cell } }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     val parisBoundary: StateFlow<CityBoundary?> = geo
         .map { it?.boundary }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -151,7 +166,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val quartierProgress: StateFlow<List<QuartierProgress>> =
-        combine(visits, geo.filterNotNull()) { list, parisGeo -> parisGeo.quartiers.progress(list) }
+        combine(revealedVisits, geo.filterNotNull()) { list, parisGeo -> parisGeo.quartiers.progress(list) }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -181,7 +196,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val summary: StateFlow<GameSummary?> =
-        combine(visitedCells, geo.filterNotNull(), quartierProgress, collections) { cells, parisGeo, progress, sets ->
+        combine(revealedCells, geo.filterNotNull(), quartierProgress, collections) { cells, parisGeo, progress, sets ->
             val revealed = parisGeo.cells.countInside(cells)
             GameSummary(
                 revealedCells = revealed,
@@ -247,14 +262,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { settings.setLastCelebratedLevel(level.number) }
     }
 
-    val weeklyHistory: StateFlow<List<WeekCount>> = visits
+    val weeklyHistory: StateFlow<List<WeekCount>> = revealedVisits
         .map { list -> weeklyHistory(list.map { it.firstVisitedAt }, LocalDate.now(), ZoneId.systemDefault()) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Recalculée à chaque nouvelle cellule (une petite image, quelques ms).
     // Journal de marche : les 14 derniers jours, pour l'écran « Progrès ».
-    val dailyHistory: StateFlow<List<DayCount>> = visits
+    val dailyHistory: StateFlow<List<DayCount>> = revealedVisits
         .map { list -> dailyHistory(list.map { it.firstVisitedAt }, LocalDate.now(), ZoneId.systemDefault()) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -264,14 +279,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     val selectedDay: StateFlow<LocalDate?> = _selectedDay.asStateFlow()
 
     // Cellules révélées pour la première fois le jour affiché.
-    val dayCells: StateFlow<Set<CellId>> = combine(visits, _selectedDay) { list, day ->
+    val dayCells: StateFlow<Set<CellId>> = combine(revealedVisits, _selectedDay) { list, day ->
         if (day == null) emptySet() else cellsRevealedOn(list, day, ZoneId.systemDefault())
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     fun showDay(day: LocalDate) {
         _selectedDay.value = day
-        val cells = cellsRevealedOn(visits.value, day, ZoneId.systemDefault())
+        val cells = cellsRevealedOn(revealedVisits.value, day, ZoneId.systemDefault())
         if (cells.isNotEmpty()) {
             // Cadre la carte sur les rues découvertes ce jour-là.
             val south = cells.minOf { it.y }
@@ -290,7 +305,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     // Jour précédent / suivant ayant au moins une nouvelle cellule.
     fun shiftDay(forward: Boolean) {
         val current = _selectedDay.value ?: return
-        adjacentActiveDay(visits.value, current, ZoneId.systemDefault(), forward)?.let { showDay(it) }
+        adjacentActiveDay(revealedVisits.value, current, ZoneId.systemDefault(), forward)?.let { showDay(it) }
     }
 
     fun clearDay() {
@@ -368,7 +383,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Recalculé à chaque nouvelle cellule ; la couleur dépend du style, pas de ce calcul.
-    val fogShapes: StateFlow<FogShapes?> = combine(visitedCells, geo.filterNotNull()) { cells, parisGeo ->
+    val fogShapes: StateFlow<FogShapes?> = combine(revealedCells, geo.filterNotNull()) { cells, parisGeo ->
         fogShapesOf(fogBands(cells, parisGeo.cells.extent))
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

@@ -1,6 +1,7 @@
 package com.glazrak.fogofparis.data
 
 import android.content.Context
+import com.glazrak.fogofparis.domain.CellId
 import com.glazrak.fogofparis.domain.CityBoundary
 import com.glazrak.fogofparis.domain.CityCells
 import com.glazrak.fogofparis.domain.CollectionSet
@@ -11,6 +12,7 @@ import com.glazrak.fogofparis.domain.PlaceIndex
 import com.glazrak.fogofparis.domain.Quartier
 import com.glazrak.fogofparis.domain.QuartierIndex
 import com.glazrak.fogofparis.domain.Ring
+import com.glazrak.fogofparis.domain.WalkableWays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,12 +32,16 @@ const val PLACES_ASSET = "places.geojson"
 // Trésors cachés, un par quartier (voir tools/places/treasures.tsv).
 const val TREASURES_ASSET = "treasures.geojson"
 
+// Cellules traversées par une voie piétonne publique (OpenStreetMap, voir tools/walkable/).
+const val WALKABLE_ASSET = "walkable_cells.txt"
+
 // Toute la géographie du jeu, calculée une fois.
 class ParisGeo(
     val boundary: CityBoundary,
     val cells: CityCells,
     val quartiers: QuartierIndex,
     val places: PlaceIndex,
+    val walkableWays: WalkableWays,
 )
 
 // Lu une seule fois par processus (~ une seconde au plus), puis partagé entre
@@ -53,7 +59,13 @@ object ParisGeoCache {
         val quartiers = quartiersFromGeoJson(readAsset(context, QUARTIERS_ASSET))
         val places = placesFromGeoJson(readAsset(context, PLACES_ASSET)) +
             placesFromGeoJson(readAsset(context, TREASURES_ASSET))
-        return ParisGeo(boundary, CityCells.of(boundary), QuartierIndex(quartiers), PlaceIndex(places))
+        return ParisGeo(
+            boundary = boundary,
+            cells = CityCells.of(boundary),
+            quartiers = QuartierIndex(quartiers),
+            places = PlaceIndex(places),
+            walkableWays = walkableWaysFromText(readAsset(context, WALKABLE_ASSET)),
+        )
     }
 
     private fun readAsset(context: Context, name: String): String =
@@ -62,6 +74,21 @@ object ParisGeoCache {
 
 // Les fonctions ci-dessous sont séparées du Context pour pouvoir être testées
 // sur les vrais fichiers sans Android.
+
+// Une ligne par rangée de la grille : "y:x1..x2,x3" (suites de cellules ; x peut
+// être négatif à l'ouest de l'origine de la grille, dans le bois de Boulogne).
+fun walkableWaysFromText(text: String): WalkableWays {
+    val cells = HashSet<CellId>()
+    text.lineSequence().filter { it.isNotBlank() }.forEach { line ->
+        val (row, runs) = line.split(':', limit = 2)
+        val y = row.trim().toInt()
+        runs.split(',').forEach { run ->
+            val bounds = run.split("..").map { it.trim().toInt() }
+            for (x in bounds.first()..bounds.last()) cells.add(CellId(x, y))
+        }
+    }
+    return WalkableWays(cells)
+}
 
 fun parisBoundaryFromGeoJson(json: String): CityBoundary {
     val areas = polygonsOf(json).map { outerRingOf(it) }

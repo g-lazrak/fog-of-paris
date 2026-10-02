@@ -24,7 +24,9 @@ import com.glazrak.fogofparis.domain.POINTS_PER_MEDAL
 import com.glazrak.fogofparis.domain.collectionProgress
 import com.glazrak.fogofparis.domain.levelFor
 import com.glazrak.fogofparis.domain.medalsCrossed
+import com.glazrak.fogofparis.domain.patchesClosedBy
 import com.glazrak.fogofparis.domain.totalPoints
+import com.glazrak.fogofparis.domain.withEnclosedCells
 import com.glazrak.fogofparis.ui.arrondissementLabel
 import com.glazrak.fogofparis.ui.emoji
 import com.glazrak.fogofparis.ui.label
@@ -37,7 +39,9 @@ class RewardNotifier(
     private val repository: VisitedCellsRepository,
 ) {
     private class Counters(
-        val visitedCells: HashSet<CellId>,
+        // Parcourues (pour les lieux) et révélées (parcourues + îlots, pour les points).
+        val walkedCells: HashSet<CellId>,
+        val revealedCells: HashSet<CellId>,
         val revealedPerQuartier: HashMap<Int, Int>,
         val visitedPlaceIds: HashSet<String>,
         var points: Int,
@@ -49,14 +53,17 @@ class RewardNotifier(
     suspend fun ensureLoaded(geo: ParisGeo) {
         if (counters != null) return
         val visits = repository.currentVisits()
-        val cells = visits.mapTo(HashSet()) { it.cell }
-        val quartierProgress = geo.quartiers.progress(visits)
-        val collections = collectionProgress(geo.places.places, cells)
+        val walked = visits.mapTo(HashSet()) { it.cell }
+        val revealedVisits = withEnclosedCells(visits, geo.cells, geo.walkableWays)
+        val revealed = revealedVisits.mapTo(HashSet()) { it.cell }
+        val quartierProgress = geo.quartiers.progress(revealedVisits)
+        val collections = collectionProgress(geo.places.places, walked)
         counters = Counters(
-            visitedCells = cells,
+            walkedCells = walked,
+            revealedCells = revealed,
             revealedPerQuartier = quartierProgress.associateTo(HashMap()) { it.quartier.id to it.revealedCells },
             visitedPlaceIds = collections.flatMapTo(HashSet()) { it.visitedIds },
-            points = totalPoints(geo.cells.countInside(cells), quartierProgress, collections),
+            points = totalPoints(geo.cells.countInside(revealed), quartierProgress, collections),
         )
     }
 
@@ -65,9 +72,32 @@ class RewardNotifier(
     fun onNewCell(cell: CellId, geo: ParisGeo) {
         val state = counters ?: return
         val pointsBefore = state.points
-        state.visitedCells += cell
-        if (geo.cells.contains(cell)) state.points += POINTS_PER_CELL
+        state.walkedCells += cell
+        // La cellule elle-même, plus les îlots qu'elle vient de refermer (déjà
+        // révélée si elle était dans un îlot : rien de nouveau à compter).
+        val newlyRevealed = mutableListOf<CellId>()
+        if (state.revealedCells.add(cell)) newlyRevealed.add(cell)
+        patchesClosedBy(cell, state.walkedCells, state.revealedCells, geo.cells, geo.walkableWays)
+            .forEach { patch -> patch.filterTo(newlyRevealed) { state.revealedCells.add(it) } }
+        newlyRevealed.forEach { countRevealedCell(it, geo, state) }
 
+        // Les lieux, eux, ne se valident qu'en passant à côté.
+        collectPlacesNear(cell, geo, state)
+
+        val levelBefore = levelFor(pointsBefore).level
+        val levelAfter = levelFor(state.points).level
+        if (levelAfter.number > levelBefore.number) {
+            notify(
+                id = LEVEL_ID,
+                title = context.getString(R.string.level_up_title, levelAfter.title),
+                text = context.getString(R.string.level_up_text, levelAfter.number),
+            )
+        }
+    }
+
+    // Points, médaille de quartier et badge d'arrondissement d'une cellule révélée.
+    private fun countRevealedCell(cell: CellId, geo: ParisGeo, state: Counters) {
+        if (geo.cells.contains(cell)) state.points += POINTS_PER_CELL
         geo.quartiers.quartierOf(cell)?.let { quartier ->
             val before = state.revealedPerQuartier[quartier.id] ?: 0
             state.revealedPerQuartier[quartier.id] = before + 1
@@ -96,7 +126,9 @@ class RewardNotifier(
                 }
             }
         }
+    }
 
+    private fun collectPlacesNear(cell: CellId, geo: ParisGeo, state: Counters) {
         for (place in geo.places.placesNear(cell)) {
             if (!state.visitedPlaceIds.add(place.id)) continue
             state.points += place.set.pointsPerPlace
@@ -123,16 +155,6 @@ class RewardNotifier(
                     text = context.getString(R.string.place_found_text, setName(place.set), visitedInSet, setPlaces.size),
                 )
             }
-        }
-
-        val levelBefore = levelFor(pointsBefore).level
-        val levelAfter = levelFor(state.points).level
-        if (levelAfter.number > levelBefore.number) {
-            notify(
-                id = LEVEL_ID,
-                title = context.getString(R.string.level_up_title, levelAfter.title),
-                text = context.getString(R.string.level_up_text, levelAfter.number),
-            )
         }
     }
 
