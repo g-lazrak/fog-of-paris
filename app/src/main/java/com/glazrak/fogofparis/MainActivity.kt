@@ -129,6 +129,10 @@ class MainActivity : ComponentActivity() {
                                             viewModel.showQuartier(quartier)
                                             tab = AppTab.MAP
                                         },
+                                        onShowPlace = { place ->
+                                            viewModel.showPlace(place)
+                                            tab = AppTab.MAP
+                                        },
                                     )
                                     AppTab.COLLECTIONS -> CollectionsScreen(
                                         viewModel = viewModel,

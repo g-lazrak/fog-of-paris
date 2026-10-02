@@ -118,6 +118,10 @@ Personal project, not published on the Play Store for now.
      map, compass or nearby alerts; each quartier shows its hint, the name
      stays "???" until found (within ~60 m). +150 pts each, no set bonus. The
      owner reviews the list.
+   - Found treasures (owner, 2026-10-02): tapping one in Trouvailles or
+     Quartiers opens a short card with a 2–3 sentence story (bundled, works
+     offline) and, when an article exists, a « Wikipédia ↗ » link opened in
+     the browser only on tap.
    - Treasure hunt (owner, 2026-09-27): tapping an unfound treasure while
      standing in its quartier starts a "chaud / froid" hunt on the map
      (distance + getting closer/further, no direction). A « Donner sa langue

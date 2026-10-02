@@ -103,6 +103,7 @@
     <string name="quartier_to_next_medal">%1$s · encore %2$d carrés pour %3$s</string>
     <string name="quartier_all_medals">Toutes les médailles !</string>
     <string name="show_on_map">Voir sur la carte</string>
+    <string name="read_on_wikipedia">Wikipédia ↗</string>
     <plurals name="collections_places">
         <item quantity="one">%1$d lieu sur %2$d</item>
         <item quantity="other">%1$d lieux sur %2$d</item>

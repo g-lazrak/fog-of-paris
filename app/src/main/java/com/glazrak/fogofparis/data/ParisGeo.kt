@@ -88,7 +88,8 @@ fun quartiersFromGeoJson(json: String): List<Quartier> =
     }.sortedBy { it.id }
 
 // Chaque lieu est un point avec ses propriétés "id", "name" et "set"
-// (nom d'une CollectionSet, ex. "BRIDGES"), et en option "radius" et "hint".
+// (nom d'une CollectionSet, ex. "BRIDGES"), et en option "radius", "hint",
+// "story" et "wiki" (titre d'article Wikipédia).
 fun placesFromGeoJson(json: String): List<Place> =
     FeatureCollection.fromJson(json).features().orEmpty().mapNotNull { feature ->
         val point = feature.geometry() as? org.maplibre.geojson.Point ?: return@mapNotNull null
@@ -103,6 +104,8 @@ fun placesFromGeoJson(json: String): List<Place> =
                 DEFAULT_PLACE_RADIUS_M
             },
             hint = if (feature.hasProperty("hint")) feature.getStringProperty("hint") else null,
+            story = if (feature.hasProperty("story")) feature.getStringProperty("story") else null,
+            wikiTitle = if (feature.hasProperty("wiki")) feature.getStringProperty("wiki") else null,
         )
     }
 

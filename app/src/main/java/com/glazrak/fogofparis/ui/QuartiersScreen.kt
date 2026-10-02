@@ -71,7 +71,12 @@ import kotlin.math.cos
 
 // Écran « Quartiers » : la mosaïque des 80 quartiers, colorés par médaille.
 @Composable
-fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit, onHuntTreasure: (Place) -> Unit) {
+fun QuartiersScreen(
+    viewModel: MapViewModel,
+    onShowQuartier: (Quartier) -> Unit,
+    onShowPlace: (Place) -> Unit,
+    onHuntTreasure: (Place) -> Unit,
+) {
     val progress by viewModel.quartierProgress.collectAsStateWithLifecycle()
     val treasures by viewModel.treasureByQuartier.collectAsStateWithLifecycle()
     if (progress.isEmpty()) return
@@ -109,6 +114,7 @@ fun QuartiersScreen(viewModel: MapViewModel, onShowQuartier: (Quartier) -> Unit,
         SelectedQuartierCard(
             selected, treasures[selected.quartier.id],
             onShow = { onShowQuartier(selected.quartier) },
+            onShowPlace = onShowPlace,
             onHuntTreasure = onHuntTreasure,
         )
         val badges = remember(progress) { arrondissementBadges(progress).associateBy { it.arrondissement } }
@@ -213,8 +219,20 @@ private fun SelectedQuartierCard(
     progress: QuartierProgress,
     treasure: PlaceMarker?,
     onShow: () -> Unit,
+    onShowPlace: (Place) -> Unit,
     onHuntTreasure: (Place) -> Unit,
 ) {
+    var storyPlace by remember { mutableStateOf<Place?>(null) }
+    storyPlace?.let { place ->
+        PlaceStorySheet(
+            place = place,
+            onShowOnMap = {
+                storyPlace = null
+                onShowPlace(place)
+            },
+            onDismiss = { storyPlace = null },
+        )
+    }
     val context = LocalContext.current
     val medal = progress.medal
     val accent = medal?.color ?: Night.TextMuted
@@ -259,7 +277,9 @@ private fun SelectedQuartierCard(
         }
         // Barre pleine à 75 % : la médaille « Maîtrisé », le maximum réaliste.
         NightProgressBar((progress.percent / Medal.MASTERED.thresholdPercent).toFloat(), medal?.color ?: Night.Started, height = 8.dp)
-        treasure?.let { TreasureLine(it, onHunt = { onHuntTreasure(it.place) }) }
+        treasure?.let {
+            TreasureLine(it, onHunt = { onHuntTreasure(it.place) }, onStory = { storyPlace = it.place })
+        }
         Button(
             onClick = onShow,
             colors = ButtonDefaults.buttonColors(containerColor = Night.Text, contentColor = Night.Background),
@@ -274,13 +294,14 @@ private fun SelectedQuartierCard(
 
 // Le trésor du quartier : son indice tant qu'il est caché, son nom une fois trouvé.
 @Composable
-private fun TreasureLine(treasure: PlaceMarker, onHunt: () -> Unit) {
+private fun TreasureLine(treasure: PlaceMarker, onHunt: () -> Unit, onStory: () -> Unit) {
     val color = CollectionSet.TREASURES.color
     Row(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        // Trésor pas encore trouvé : un appui lance la chasse « chaud / froid ».
-        modifier = if (treasure.visited) Modifier else Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onHunt),
+        // Pas encore trouvé : un appui lance la chasse « chaud / froid » ;
+        // trouvé : il ouvre sa fiche (histoire, Wikipédia).
+        modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = if (treasure.visited) onStory else onHunt),
     ) {
         IconBadge(R.drawable.ic_treasure, if (treasure.visited) color else Night.TextMuted, size = 36.dp)
         Column(modifier = Modifier.weight(1f)) {

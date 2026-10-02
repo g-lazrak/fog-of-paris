@@ -67,6 +67,16 @@ class ParisBoundaryTest {
     }
 
     @Test
+    fun every_treasure_has_a_short_story() {
+        val treasures = placesFromGeoJson(File("src/main/assets/$TREASURES_ASSET").readText())
+        val missing = treasures.filter { it.story.isNullOrBlank() }.map { it.id }
+        assertTrue("Treasures without a story: $missing", missing.isEmpty())
+        // « Pas trop long » (propriétaire) : deux ou trois phrases.
+        val tooLong = treasures.filter { (it.story?.length ?: 0) > 260 }.map { it.id }
+        assertTrue("Stories too long: $tooLong", tooLong.isEmpty())
+    }
+
+    @Test
     fun there_are_80_quartiers_4_per_arrondissement() {
         assertEquals(80, quartiers.size)
         assertEquals((1..20).toSet(), quartiers.map { it.arrondissement }.toSet())

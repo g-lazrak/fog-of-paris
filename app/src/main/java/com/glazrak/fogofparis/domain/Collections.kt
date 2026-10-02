@@ -29,6 +29,10 @@ data class Place(
     val radiusMeters: Double = DEFAULT_PLACE_RADIUS_M,
     // Indice affiché tant qu'un trésor n'est pas trouvé.
     val hint: String? = null,
+    // Petite histoire du lieu, montrée une fois trouvé (trésors seulement).
+    val story: String? = null,
+    // Titre de l'article Wikipédia en français, s'il en existe un.
+    val wikiTitle: String? = null,
 )
 
 const val DEFAULT_PLACE_RADIUS_M = 75.0

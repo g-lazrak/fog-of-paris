@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,6 +55,9 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onH
     val collections by viewModel.collections.collectAsStateWithLifecycle()
     val recent by viewModel.recentDiscoveries.collectAsStateWithLifecycle()
     var openSet by rememberSaveable { mutableStateOf<CollectionSet?>(null) }
+    // Trésor trouvé touché : sa fiche (histoire + Wikipédia) avant la carte.
+    var storyPlace by remember { mutableStateOf<Place?>(null) }
+    val onPlace: (Place) -> Unit = { place -> if (place.hasStory) storyPlace = place else onShowPlace(place) }
     if (collections.isEmpty()) return
 
     Column(
@@ -86,7 +90,7 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onH
                 }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
-            pair.firstOrNull { it.set == openSet }?.let { PlaceList(it, onShowPlace, onHuntTreasure) }
+            pair.firstOrNull { it.set == openSet }?.let { PlaceList(it, onPlace, onHuntTreasure) }
         }
         if (recent.isNotEmpty()) {
             SectionLabel(stringResource(R.string.recent_discoveries))
@@ -98,7 +102,7 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onH
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 44.dp)
-                            .clickable { onShowPlace(place) },
+                            .clickable { onPlace(place) },
                     ) {
                         Box(Modifier.size(8.dp).clip(CircleShape).background(place.set.color))
                         Text(place.name, style = MaterialTheme.typography.bodyLarge, color = Night.Text, modifier = Modifier.weight(1f))
@@ -108,6 +112,16 @@ fun CollectionsScreen(viewModel: MapViewModel, onShowPlace: (Place) -> Unit, onH
                 }
             }
         }
+    }
+    storyPlace?.let { place ->
+        PlaceStorySheet(
+            place = place,
+            onShowOnMap = {
+                storyPlace = null
+                onShowPlace(place)
+            },
+            onDismiss = { storyPlace = null },
+        )
     }
 }
 

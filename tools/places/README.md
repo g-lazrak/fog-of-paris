@@ -20,3 +20,16 @@ awk -F'\t' 'BEGIN{print "{\"type\":\"FeatureCollection\",\"features\":["} NR>1 {
 ```
 
 Le test `ParisBoundaryTest` vérifie que chaque lieu est bien dans Paris.
+
+## Trésors cachés
+
+`treasures.tsv` : un trésor par quartier (80), avec `hint` (indice affiché
+tant qu'il n'est pas trouvé), `story` (2-3 phrases d'histoire, montrées une
+fois trouvé) et `wiki` (titre exact de l'article Wikipédia en français, vide
+s'il n'y en a pas). Les titres ont été vérifiés avec l'API de Wikipédia.
+
+Pour régénérer `app/src/main/assets/treasures.geojson` (Git Bash) :
+
+```sh
+awk -F'\t' 'function q(s) { gsub(/"/, "\\\"", s); return "\"" s "\"" } BEGIN{print "{\"type\":\"FeatureCollection\",\"features\":["} NR>1 { wiki = ($8 != "" ? ",\"wiki\":" q($8) : ""); printf "%s{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[%s,%s]},\"properties\":{\"id\":%s,\"name\":%s,\"set\":\"TREASURES\",\"radius\":%s,\"hint\":%s,\"story\":%s%s}}", (NR>2?",\n":""), $4, $3, q($1), q($2), $5, q($6), q($7), wiki } END{print "\n]}"}' tools/places/treasures.tsv > app/src/main/assets/treasures.geojson
+```
